@@ -55,6 +55,12 @@ tablist:
 # Defines the formats to be used.
 formats:
 
+  # A say format
+  everyone-say:
+    type: "say"
+    check-permission: false
+    format: "<dark_gray><{coloured_display_name}<dark_gray>><reset> {message}"
+
   # A me format
   everyone-me:
     type: "me"
@@ -160,7 +166,7 @@ formats:
     check-permission: true
 
     # the actual format for the chat message
-    format: "{luckperms_prefix}{name}{luckperms_suffix}{message}"
+    format: "<dark_gray><{coloured_display_name}<dark_gray>><reset> {message}"
 
     format-extra:
 

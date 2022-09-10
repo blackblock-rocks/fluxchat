@@ -350,22 +350,15 @@ public class GChatPlayer {
             return null;
         }
 
-        String text = GChatPlugin.instance.replacePlaceholders(player, format.getFormatText());
+        String text = format.getFormatText();
 
         if (text == null) {
-            System.out.println("Failed to format text for '" + format_name + "'");
             return null;
         }
 
-        // get any hover text, and apply replacements.
-        String hover = GChatPlugin.instance.replacePlaceholders(player, format.getHoverText());
 
-        // get the click event type, and the value if present.
-        ClickEvent.Action click_type = format.getClickType();
+        String hover = format.getHoverText();
         String click_value = format.getClickValue();
-        if (click_type != null) {
-            click_value = GChatPlugin.instance.replacePlaceholders(player, click_value);
-        }
 
         if (parameters != null) {
             for (Map.Entry<String, String> entry : parameters.entrySet()) {
@@ -380,6 +373,23 @@ public class GChatPlayer {
                     click_value = click_value.replace(key, value);
                 }
             }
+        }
+
+        text = GChatPlugin.instance.replacePlaceholders(player, text);
+
+        if (text == null) {
+            System.out.println("Failed to format text for '" + format_name + "'");
+            return null;
+        }
+
+        // get any hover text, and apply replacements.
+        hover = GChatPlugin.instance.replacePlaceholders(player, hover);
+
+        // get the click event type, and the value if present.
+        ClickEvent.Action click_type = format.getClickType();
+
+        if (click_type != null) {
+            click_value = GChatPlugin.instance.replacePlaceholders(player, click_value);
         }
 
         // apply any hover events

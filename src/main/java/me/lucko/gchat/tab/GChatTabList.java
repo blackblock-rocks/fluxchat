@@ -78,7 +78,7 @@ public class GChatTabList {
 
         this.update_counter++;
 
-        // Send the playerlist every 2 minutes
+        // Send the playerlist to the website every 2 minutes
         if (this.update_counter > 120) {
             this.sendPlayerList();
             this.update_counter = 0;
@@ -101,7 +101,6 @@ public class GChatTabList {
 
             ServerConnection connection = player.getCurrentServer().orElse(null);
 
-
             JsonObject temp = GChatPlugin.createObject("list", player);
             event_list.add(temp.getAsJsonObject("player"));
         }
@@ -116,73 +115,100 @@ public class GChatTabList {
     public Boolean updatePlayers() {
 
         boolean players_changed = false;
-
-        LegacyComponentSerializer legacy = LegacyComponentSerializer.legacyAmpersand();
+        boolean caught_error = false;
 
         for (Player player : this.proxy_server.getAllPlayers()) {
-
-            // Get this player's tablist
-            TabList tablist = player.getTabList();
-
-            // If a tablist header/footer is set, add it now
-            if (this.tablist_header != null || this.tablist_footer != null) {
-
-                String header = "";
-                String footer = "";
-
-                if (this.tablist_header != null) {
-                    header = plugin.replacePlaceholders(player, this.tablist_header);
-                }
-
-                if (this.tablist_footer != null) {
-                    footer = plugin.replacePlaceholders(player, this.tablist_footer);
-                }
-
-                tablist.setHeaderAndFooter(legacy.deserialize(header), legacy.deserialize(footer));
-            }
-
-            // Now iterate over all the other players
-            for (Player other_player : this.proxy_server.getAllPlayers()) {
-
-                // If this other_player is not in the tablist of the current player...
-                if (!tablist.containsEntry(other_player.getUniqueId())) {
-                    players_changed = true;
-
-                    Component display_name = this.getPlayerTabDisplay(other_player, player);
-
-                    TabListEntry entry = TabListEntry.builder()
-                            // Setting a displayname here will only work if the players are on different servers
-                            //.displayName(display_name)
-                            .profile(other_player.getGameProfile())
-                            .gameMode(0) // Impossible to get player game mode from proxy, always assume survival
-                            .tabList(tablist)
-                            .build();
-
-                    entry.setDisplayName(display_name);
-                    tablist.addEntry(entry);
-                }
-            }
-
-            // Now iterate over all the tablist entries again!
-            for (TabListEntry entry : tablist.getEntries()) {
-                UUID uuid = entry.getProfile().getId();
-
-                // See if this player is still online
-                Optional<Player> playerOptional = proxy_server.getPlayer(uuid);
-
-                // If the player is still present, update it
-                if (playerOptional.isPresent()) {
-                    Player other_player = playerOptional.get();
-
-                    // Update ping
-                    entry.setLatency((int) (other_player.getPing()));
-
-                    Component display_name = this.getPlayerTabDisplay(other_player, player);
-                    entry.setDisplayName(display_name);
-                } else {
-                    player.getTabList().removeEntry(uuid);
+            try {
+                if (this.updatePlayerTablist(player)) {
                     players_changed = true;
                 }
+            } catch (Exception err) {
+
+                if (!caught_error) {
+                    System.out.println("Caught tablist error for " + player.getUsername() + ": " + err.getMessage());
+                    err.printStackTrace();
+                }
+
+                caught_error = true;
+            }
+        }
+
+        return players_changed;
+    }
+
+    /**
+     * Update the given player's tablist
+     */
+    private Boolean updatePlayerTablist(Player player) {
+
+        LegacyComponentSerializer legacy = LegacyComponentSerializer.legacyAmpersand();
+        boolean players_changed = false;
+
+        // Get this player's tablist
+        TabList tablist = player.getTabList();
+
+        // If a tablist header/footer is set, add it now
+        if (this.tablist_header != null || this.tablist_footer != null) {
+
+            String header = "";
+            String footer = "";
+
+            if (this.tablist_header != null) {
+                header = plugin.replacePlaceholders(player, this.tablist_header);
+            }
+
+            if (this.tablist_footer != null) {
+                footer = plugin.replacePlaceholders(player, this.tablist_footer);
+            }
+
+            tablist.setHeaderAndFooter(legacy.deserialize(header), legacy.deserialize(footer));
+        }
+
+        // Now iterate over all the other players
+        for (Player other_player : this.proxy_server.getAllPlayers()) {
+
+            // If this other_player is not in the tablist of the current player...
+            if (!tablist.containsEntry(other_player.getUniqueId())) {
+                players_changed = true;
+
+                Component display_name = this.getPlayerTabDisplay(other_player, player);
+
+                TabListEntry entry = TabListEntry.builder()
+                        // Setting a displayname here will only work if the players are on different servers
+                        //.displayName(display_name)
+                        .profile(other_player.getGameProfile())
+                        .gameMode(0) // Impossible to get player game mode from proxy, always assume survival
+                        .tabList(tablist)
+                        .build();
+
+                entry.setDisplayName(display_name);
+                tablist.addEntry(entry);
+            }
+        }
+
+        // Now iterate over all the tablist entries again!
+        for (TabListEntry entry : tablist.getEntries()) {
+            UUID uuid = entry.getProfile().getId();
+
+            // See if this player is still online
+            Optional<Player> playerOptional = proxy_server.getPlayer(uuid);
+
+            // If the player is still present, update it
+            if (playerOptional.isPresent()) {
+                Player other_player = playerOptional.get();
+
+                // Update ping
+                entry.setLatency((int) (other_player.getPing()));
+
+                Component display_name = this.getPlayerTabDisplay(other_player, player);
+
+                if (display_name != null) {
+                    entry.setDisplayName(display_name);
+                }
+
+            } else {
+                player.getTabList().removeEntry(uuid);
+                players_changed = true;
             }
         }
 

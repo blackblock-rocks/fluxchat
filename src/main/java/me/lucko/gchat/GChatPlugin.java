@@ -404,7 +404,7 @@ public class GChatPlugin implements GChatApi {
             tick_counter = 0;
         }
 
-        this.counter_map.put(server_info, tick_counter + 1);
+        this.counter_map.put(server_info, tick_counter);
 
         Float existing_mspt = this.mspt_map.get(server_info);
 

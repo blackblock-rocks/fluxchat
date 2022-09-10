@@ -42,6 +42,11 @@ public class MeCommand implements SimpleCommand {
         parameters.put("message", MiniMessage.miniMessage().escapeTags(message));
 
         TextComponent me_message = player.format(this.format, parameters);
+
+        if (me_message == null) {
+            return;
+        }
+
         player.broadcast(me_message, true);
     }
 }

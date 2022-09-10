@@ -82,15 +82,21 @@ public class GChatListener {
             GChatPlugin.pushEvent(object);
         }
 
-        ChatFormat format = plugin.getFormat(player, "login").orElse(null);
+        GChatPlayer gplayer = GChatPlayer.get(player);
+        TextComponent message = gplayer.format("login", null);
 
-        if (format == null) {
+        if (message == null) {
             return;
         }
 
-        TextComponent message = this.createFormattedText(player, format, "");
-
         this.broadcastMessage(message);
+    }
+
+    public Map<String, String> getServerParameters(ServerInfo info) {
+        Map<String, String> parameters = new HashMap<>();
+        parameters.put("server", info.getName());
+        parameters.put("server_name", info.getName());
+        return parameters;
     }
 
     @Subscribe(order = PostOrder.NORMAL)
@@ -108,13 +114,12 @@ public class GChatListener {
             GChatPlugin.pushEvent(object);
         }
 
-        ChatFormat format = plugin.getFormat(player, "join").orElse(null);
+        GChatPlayer gplayer = GChatPlayer.get(player);
+        TextComponent message = gplayer.format("join", this.getServerParameters(info));
 
-        if (format == null) {
+        if (message == null) {
             return;
         }
-
-        TextComponent message = this.createFormattedText(player, server, format, "");
 
         this.broadcastMessage(message);
     }
@@ -128,15 +133,12 @@ public class GChatListener {
             GChatPlugin.pushEvent(object);
         }
 
-        ChatFormat format = plugin.getFormat(player, "logout").orElse(null);
+        GChatPlayer gplayer = GChatPlayer.get(player);
+        TextComponent message = gplayer.format("logout", null);
 
-        GChatPlayer.remove(player);
-
-        if (format == null) {
+        if (message == null) {
             return;
         }
-
-        TextComponent message = this.createFormattedText(player, format, "");
 
         this.broadcastMessage(message);
     }
