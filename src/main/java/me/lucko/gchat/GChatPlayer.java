@@ -3,20 +3,23 @@ package me.lucko.gchat;
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ServerConnection;
+import com.velocitypowered.api.proxy.server.ServerInfo;
 import me.lucko.gchat.api.ChatFormat;
-import net.kyori.adventure.audience.MessageType;
-import net.kyori.adventure.identity.Identity;
+import me.lucko.gchat.monitoring.ErrorSentry;
+import me.lucko.gchat.placeholder.StringSplitter;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.luckperms.api.LuckPerms;
 import net.luckperms.api.LuckPermsProvider;
 import net.luckperms.api.model.user.User;
 import net.luckperms.api.node.NodeType;
 import net.luckperms.api.node.types.MetaNode;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.text.DateFormat;
@@ -40,22 +43,15 @@ public class GChatPlayer {
     public static LegacyComponentSerializer legacyLinkingSerializer = null;
     public static MiniMessage miniMessage = null;
 
-    static {
-        COLOR_MAP.put("&0", "black");
-        COLOR_MAP.put("&1", "dark_blue");
-        COLOR_MAP.put("&2", "dark_green");
-        COLOR_MAP.put("&3", "dark_aqua");
-        COLOR_MAP.put("&4", "dark_red");
-        COLOR_MAP.put("&5", "dark_purple");
+    // Custom placeholders per server
+    private Map<ServerInfo, Map<String, TextComponent>> server_placeholders = new HashMap<>();
 
-        COLOR_MAP.put("&9", "blue");
-        COLOR_MAP.put("&a", "green");
-
-        COLOR_MAP.put("&d", "light_purple");
-        COLOR_MAP.put("&e", "yellow");
-        COLOR_MAP.put("&f", "white");
-    }
-
+    /**
+     * Initialize the instance
+     *
+     * @author   Jelle De Loecker
+     * @since    3.0.2
+     */
     public GChatPlayer(Player player) {
         this.player = player;
         this.luckperms = LuckPermsProvider.get();
@@ -63,6 +59,12 @@ public class GChatPlayer {
         this.init();
     }
 
+    /**
+     * Initialize some basic data
+     *
+     * @author   Jelle De Loecker
+     * @since    3.1.0
+     */
     private void init() {
         this.pronouns = this.getMetaValue("pronouns");
         this.timezone = this.getMetaValue("timezone");
@@ -70,6 +72,52 @@ public class GChatPlayer {
         this.nickname_color = this.getMetaValue("nickname_color");
         this.fixNickname();
     }
+
+    /**
+     * Set a server-specific placeholder
+     *
+     * @author   Jelle De Loecker
+     * @since    3.1.0
+     */
+    public void setServerPlaceholder(ServerInfo server_info, String key, String value) {
+        Map<String, TextComponent> placeholders = this.server_placeholders.computeIfAbsent(server_info, k -> new HashMap<>());
+
+        Component component = null;
+        TextComponent result = null;
+
+        try {
+            component = GsonComponentSerializer.gson().deserialize(value);
+        } catch (Exception e) {
+            ErrorSentry.capture(e);
+            return;
+        }
+
+        if (component instanceof TextComponent text_component) {
+            result = text_component;
+        }
+
+        System.out.println("Got placeholder " + key + " revived to " + component + " and got a text " + result);
+
+        placeholders.put(key, result);
+    }
+
+    /**
+     * Get a server-specific placeholder
+     *
+     * @author   Jelle De Loecker
+     * @since    3.1.0
+     */
+    @Nullable
+    public TextComponent getServerPlaceholder(ServerInfo server_info, String key) {
+        Map<String, TextComponent> placeholders = this.server_placeholders.get(server_info);
+
+        if (placeholders == null) {
+            return null;
+        }
+
+        return placeholders.get(key);
+    }
+
 
     /**
      * Get the coloured displayname
@@ -340,22 +388,162 @@ public class GChatPlayer {
     }
 
     /**
-     * Format the given message
+     * Format the given message,
+     * but use server-specific placeholders first.
+     *
+     * @author   Jelle De Loecker
+     * @since    3.2.0
      */
-    public TextComponent format(String format_name, @Nullable Map<String, String> parameters) {
-        ChatFormat format = GChatPlugin.instance.getFormat(player, format_name).orElse(null);
+    public TextComponent formatForServer(ServerInfo server_info, String format_name, @Nullable Map<String, String> parameters) {
+
+        // Get the format to use for this player
+        ChatFormat format = GChatPlugin.instance.getFormat(this.player, format_name).orElse(null);
 
         if (format == null) {
-            System.out.println("Failed to find format '" + format_name + "'");
+            ErrorSentry.logWarning("Failed to find format '" + format_name + "'");
             return null;
         }
 
+        return this.formatForServer(server_info, format, parameters);
+    }
+
+    /**
+     * Format the given message,
+     * but use server-specific placeholders first.
+     *
+     * @author   Jelle De Loecker
+     * @since    3.2.0
+     */
+    public TextComponent formatForServer(ServerInfo server_info, @NotNull ChatFormat format, @Nullable Map<String, String> parameters) {
+
+        // Get the actual text pattern. This might contain placeholders.
+        String main_source = format.getFormatText();
+
+        if (main_source == null) {
+            return null;
+        }
+
+        TextComponent main_text = this.convertString(server_info, main_source, parameters);
+
+        if (main_text == null) {
+            return null;
+        }
+
+        String hover = format.getHoverText();
+        String click_value = format.getClickValue();
+
+        if (hover == null && click_value == null) {
+            return main_text;
+        }
+
+        ClickEvent.Action click_type = format.getClickType();
+
+        if (click_type != null) {
+            click_value = GChatPlugin.instance.replacePlaceholders(player, click_value);
+        }
+
+        HoverEvent<Component> hover_event;
+
+        if (hover != null) {
+            TextComponent hover_text = this.convertString(server_info, hover, parameters);
+
+            if (hover_text != null) {
+                hover_event = HoverEvent.showText(hover_text);
+            } else {
+                hover_event = null;
+            }
+        } else {
+            hover_event = null;
+        }
+
+        ClickEvent click_event;
+
+        if (click_type != null) {
+            click_event = ClickEvent.clickEvent(click_type, click_value);
+        } else {
+            click_event = null;
+        }
+
+        if (click_event == null && hover_event == null) {
+            return main_text;
+        }
+
+        TextComponent.Builder builder = main_text.toBuilder();
+
+        TextComponent result = builder.applyDeep(componentBuilder -> {
+
+            Component component = componentBuilder.build();
+
+            if (hover_event != null && component.hoverEvent() == null) {
+                componentBuilder.hoverEvent(hover_event);
+            }
+
+            if (click_event != null && component.clickEvent() == null) {
+                componentBuilder.clickEvent(click_event);
+            }
+        }).build();
+
+        return result;
+    }
+
+    /**
+     * Convert the given text to a TextComponent
+     *
+     * @author   Jelle De Loecker
+     * @since    3.2.0
+     */
+    public TextComponent convertString(ServerInfo server_info, String source, @Nullable Map<String, String> parameters) {
+
+        // Create the empty result. We'll append to this.
+        TextComponent result = GChatPlugin.convertString(source, placeholder -> {
+
+            if (parameters != null) {
+                String value = parameters.get(placeholder);
+
+                if (value != null) {
+                    return Component.text(value);
+                }
+            }
+
+            // Get the value from the server-specific placeholders
+            TextComponent replacement = this.getServerPlaceholder(server_info, placeholder);
+
+            if (replacement != null) {
+                return replacement;
+            }
+
+            return GChatPlugin.instance.lookupRegisteredPlaceholders(this.player, placeholder);
+        });
+
+        return result;
+    }
+
+    /**
+     * Format the given message,
+     * but use server-specific placeholders first.
+     *
+     * @author   Jelle De Loecker
+     * @since    3.1.0
+     */
+    public TextComponent old_formatForServer(ServerInfo server_info, String format_name, @Nullable Map<String, String> parameters) {
+
+        // Get the format to use for this player
+        ChatFormat format = GChatPlugin.instance.getFormat(this.player, format_name).orElse(null);
+
+        if (format == null) {
+            ErrorSentry.logWarning("Failed to find format '" + format_name + "'");
+            return null;
+        }
+
+        // Get the actual text pattern. This might contain placeholders.
         String text = format.getFormatText();
 
         if (text == null) {
             return null;
         }
 
+        // Create the empty result. We'll append to this.
+        TextComponent result = Component.text("");
 
         String hover = format.getHoverText();
         String click_value = format.getClickValue();
@@ -417,6 +605,47 @@ public class GChatPlayer {
         } else {
             return null;
         }
+    }
+
+    /**
+     * Format the given message
+     *
+     * @author   Jelle De Loecker
+     * @since    3.1.0
+     */
+    public TextComponent format(String format_name, @Nullable Map<String, String> parameters) {
+        return this.formatForServer(null, format_name, parameters);
+    }
+
+    /**
+     * Deserialize text
+     *
+     * @author   Jelle De Loecker
+     * @since    3.1.0
+     */
+    public TextComponent deserialize(String input) {
+
+        if (input.contains("§")) {
+            input = input.replace("§", "");
+        }
+
+        Component component;
+
+        try {
+            component = getMiniMessage().deserialize(input);
+        } catch (Exception e) {
+            try {
+                component = Component.text(input);
+            } catch (Exception e2) {
+                return null;
+            }
+        }
+
+        if (component instanceof TextComponent text_component) {
+            return text_component;
+        }
+
+        return null;
     }
 
     /**
@@ -508,37 +737,6 @@ public class GChatPlayer {
     }
 
     /**
-     * Deserialize text
-     *
-     * @author   Jelle De Loecker
-     * @since    3.1.0
-     */
-    public TextComponent deserialize(String input) {
-
-        if (input.contains("§")) {
-            input = input.replace("§", "");
-        }
-
-        Component component;
-
-        try {
-            component = getMiniMessage().deserialize(input);
-        } catch (Exception e) {
-            try {
-                component = Component.text(input);
-            } catch (Exception e2) {
-                return null;
-            }
-        }
-
-        if (component instanceof TextComponent text_component) {
-            return text_component;
-        }
-
-        return null;
-    }
-
-    /**
      * Get a minimessage parser
      *
      * @author   Jelle De Loecker
@@ -579,5 +777,32 @@ public class GChatPlayer {
      */
     public static void remove(Player player) {
         CACHE.remove(player.getUniqueId());
+    }
+
+    /**
+     * The interface used to callback for replacement
+     *
+     * @author   Jelle De Loecker
+     * @since    3.2.0
+     */
+    @FunctionalInterface
+    public interface PlaceholderResolver {
+        TextComponent replace(String placeholder);
+    }
+
+    static {
+        COLOR_MAP.put("&0", "black");
+        COLOR_MAP.put("&1", "dark_blue");
+        COLOR_MAP.put("&2", "dark_green");
+        COLOR_MAP.put("&3", "dark_aqua");
+        COLOR_MAP.put("&4", "dark_red");
+        COLOR_MAP.put("&5", "dark_purple");
+
+        COLOR_MAP.put("&9", "blue");
+        COLOR_MAP.put("&a", "green");
+
+        COLOR_MAP.put("&d", "light_purple");
+        COLOR_MAP.put("&e", "yellow");
+        COLOR_MAP.put("&f", "white");
     }
 }

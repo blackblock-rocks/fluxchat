@@ -10,6 +10,7 @@ import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.ServerConnection;
 import com.velocitypowered.api.proxy.player.TabList;
 import com.velocitypowered.api.proxy.player.TabListEntry;
+import com.velocitypowered.api.proxy.server.ServerInfo;
 import me.lucko.gchat.GChatPlayer;
 import me.lucko.gchat.GChatPlugin;
 import me.lucko.gchat.config.GChatConfig;
@@ -226,21 +227,29 @@ public class GChatTabList {
      */
     public Component getPlayerTabDisplay(Player other_player, Player current_player) {
 
-        GChatPlayer gplayer = GChatPlayer.get(other_player);
+        GChatPlayer other_gplayer = GChatPlayer.get(other_player);
 
-        TextComponent display_name = gplayer.format("tab-entry", null);
+        ServerConnection other_connection = other_player.getCurrentServer().orElse(null);
+        ServerConnection current_connection = current_player.getCurrentServer().orElse(null);
+
+        ServerInfo other_server = null;
+        ServerInfo target_server = null;
+
+
+        if (current_connection != null) {
+            target_server = current_connection.getServer().getServerInfo();
+        }
+
+        TextComponent display_name = other_gplayer.formatForServer(target_server, "tab-entry", null);
 
         if (display_name == null) {
             return null;
         }
 
-        ServerConnection other_connection = other_player.getCurrentServer().orElse(null);
-
         if (other_connection != null) {
             String server_name = other_connection.getServer().getServerInfo().getName();
 
             String current_server_name = null;
-            ServerConnection current_connection = current_player.getCurrentServer().orElse(null);
 
             if (current_connection != null) {
                 current_server_name = current_connection.getServer().getServerInfo().getName();

@@ -5,6 +5,8 @@ import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.connection.PluginMessageEvent;
 import com.velocitypowered.api.proxy.ServerConnection;
 import com.velocitypowered.api.proxy.messages.ChannelIdentifier;
+import com.velocitypowered.api.proxy.server.ServerInfo;
+import me.lucko.gchat.GChatPlayer;
 import me.lucko.gchat.GChatPlugin;
 
 import java.util.UUID;
@@ -33,6 +35,12 @@ public class PluginMessageHook {
         }
     }
 
+    /**
+     * Handle a `gchat` packet, sent by the Blackblock-core server plugin.
+     *
+     * @author   Jelle De Loecker
+     * @since    3.1.0
+     */
     private void handleGchat(PluginMessageEvent e) {
 
         if (!(e.getSource() instanceof ServerConnection server)) {
@@ -54,6 +62,43 @@ public class PluginMessageHook {
         }
 
         GChatPlugin.instance.registerTicks(server, mspt, tps, load);
+
+        this.parseGchatPlayerUpdate(server.getServerInfo(), packet);
+    }
+
+    /**
+     * Parse the player update packet
+     *
+     * @author   Jelle De Loecker
+     * @since    3.2.0
+     */
+    private void parseGchatPlayerUpdate(ServerInfo server_info, ByteArrayDataInput packet) {
+
+        int player_amount = packet.readInt();
+
+        if (player_amount == 0) {
+            return;
+        }
+
+        for (int i = 0; i < player_amount; i++) {
+
+            long uuid_most = packet.readLong();
+            long uuid_least = packet.readLong();
+            UUID uuid = new UUID(uuid_most, uuid_least);
+
+            GChatPlayer player = GChatPlayer.get(uuid);
+
+            int placeholder_count = packet.readInt();
+
+            for (int j = 0; j < placeholder_count; j++) {
+                String key = packet.readUTF();
+                String value = packet.readUTF();
+
+                if (player != null) {
+                    player.setServerPlaceholder(server_info, key, value);
+                }
+            }
+        }
     }
 
     private void handleServerMove(PluginMessageEvent e) {

@@ -26,6 +26,8 @@
 package me.lucko.gchat.api;
 
 import com.velocitypowered.api.proxy.Player;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.TextComponent;
 
 /**
  * Represents a placeholder replacement.
@@ -41,4 +43,17 @@ public interface Placeholder {
      */
     String getReplacement(Player player, String definition);
 
+    /**
+     * Get the replacement as a component
+     */
+    default TextComponent getTextComponentReplacement(Player player, String definition) {
+
+        String replacement = getReplacement(player, definition);
+
+        if (replacement == null) {
+            return null;
+        }
+
+        return Component.text(replacement);
+    }
 }

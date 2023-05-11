@@ -55,13 +55,17 @@ import me.lucko.gchat.hooks.NeutronN3FSHook;
 import me.lucko.gchat.hooks.PluginMessageHook;
 import me.lucko.gchat.hooks.TimerHook;
 import me.lucko.gchat.placeholder.StandardPlaceholders;
+import me.lucko.gchat.placeholder.StringSplitter;
 import me.lucko.gchat.tab.GChatTabList;
 import net.kyori.adventure.serializer.configurate3.ConfigurateComponentSerializer;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import ninja.leaping.configurate.ConfigurationNode;
 import ninja.leaping.configurate.ConfigurationOptions;
 import ninja.leaping.configurate.objectmapping.serialize.TypeSerializerCollection;
 import ninja.leaping.configurate.yaml.YAMLConfigurationLoader;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
 import java.io.File;
@@ -470,6 +474,64 @@ public class GChatPlugin implements GChatApi {
         }
 
         return -1f;
+    }
+
+    /**
+     * Lookup in the registered placeholders
+     *
+     * @author   Jelle De Loecker
+     * @since    3.2.0
+     */
+    @Nullable
+    public TextComponent lookupRegisteredPlaceholders(Player player, String key) {
+
+        if (key == null) {
+            return null;
+        }
+
+        TextComponent result;
+
+        for (Placeholder placeholder : this.placeholders) {
+            result = placeholder.getTextComponentReplacement(player, key);
+
+            if (result != null) {
+                return result;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Convert a string into a TextComponent with help from the given resolver.
+     *
+     * @author   Jelle De Loecker
+     * @since    3.2.0
+     */
+    public static TextComponent convertString(String string, GChatPlayer.PlaceholderResolver resolver) {
+
+        List<StringSplitter.Entry> entries = StringSplitter.parse(string);
+
+        TextComponent result = Component.empty();
+
+        for (StringSplitter.Entry entry : entries) {
+            String piece = entry.getString();
+            TextComponent entry_component = null;
+
+            if (entry.isPlaceholder()) {
+                entry_component = resolver.replace(piece);
+            } else {
+                entry_component = Component.text(piece);
+            }
+
+            if (entry_component == null) {
+                continue;
+            }
+
+            result = result.append(entry_component);
+        }
+
+        return result;
     }
 
     /**
