@@ -294,7 +294,7 @@ public class GChatPlugin implements GChatApi {
             String replacement = null;
 
             for (Placeholder placeholder : placeholders) {
-                replacement = placeholder.getReplacement(player, definition);
+                replacement = placeholder.lookupStringReplacement(player, definition);
                 if (replacement != null) {
                     break;
                 }
@@ -483,7 +483,13 @@ public class GChatPlugin implements GChatApi {
      * @since    3.2.0
      */
     @Nullable
-    public TextComponent lookupRegisteredPlaceholders(Player player, String key) {
+    public TextComponent lookupRegisteredPlaceholders(Player player, StringSplitter.Entry placeholder_entry) {
+
+        if (placeholder_entry == null) {
+            return null;
+        }
+
+        String key = placeholder_entry.getContent();
 
         if (key == null) {
             return null;
@@ -492,7 +498,7 @@ public class GChatPlugin implements GChatApi {
         TextComponent result;
 
         for (Placeholder placeholder : this.placeholders) {
-            result = placeholder.getTextComponentReplacement(player, key);
+            result = placeholder.getTextComponentReplacement(player, placeholder_entry);
 
             if (result != null) {
                 return result;
@@ -512,14 +518,41 @@ public class GChatPlugin implements GChatApi {
 
         List<StringSplitter.Entry> entries = StringSplitter.parse(string);
 
-        TextComponent result = Component.empty();
+        TextComponent.Builder root = Component.text();
+        TextComponent.Builder current = root;
+
+        List<TextComponent.Builder> all = new ArrayList<>();
+        List<TextComponent.Builder> chain = new ArrayList<>();
+        chain.add(root);
+        all.add(root);
+
+        int i = 0;
 
         for (StringSplitter.Entry entry : entries) {
-            String piece = entry.getString();
-            TextComponent entry_component = null;
+            i++;
+
+            if (entry.isOpeningTag()) {
+                current = Component.text();
+                entry.applyStyle(current);
+
+                chain.add(current);
+                all.add(current);
+                continue;
+            }
+
+            if (entry.isClosingTag()) {
+                TextComponent.Builder ending = current;
+                chain.remove(chain.size() - 1);
+                current = chain.get(chain.size() - 1);
+                current.append(ending.build());
+                continue;
+            }
+
+            String piece = entry.getContent();
+            TextComponent entry_component;
 
             if (entry.isPlaceholder()) {
-                entry_component = resolver.replace(piece);
+                entry_component = resolver.replace(entry);
             } else {
                 entry_component = Component.text(piece);
             }
@@ -528,8 +561,17 @@ public class GChatPlugin implements GChatApi {
                 continue;
             }
 
-            result = result.append(entry_component);
+            current.append(entry_component);
         }
+
+        // Close all the unclosed entries in the chain
+        for (int j = chain.size() - 1; j > 0; j--) {
+            TextComponent.Builder parent = chain.get(j - 1);
+            TextComponent.Builder entry = chain.get(j);
+            parent.append(entry.build());
+        }
+
+        TextComponent result = root.build();
 
         return result;
     }

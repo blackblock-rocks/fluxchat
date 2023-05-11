@@ -42,7 +42,7 @@ public class LuckPermsHook implements Placeholder, PlaceholderPlatform {
     }
 
     @Override
-    public String getReplacement(Player player, String identifier) {
+    public String lookupStringReplacement(Player player, String identifier) {
         if (identifier.startsWith("lp_")) {
             identifier = identifier.substring("lp_".length());
         } else if (identifier.startsWith("luckperms_")) {

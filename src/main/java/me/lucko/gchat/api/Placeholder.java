@@ -26,8 +26,11 @@
 package me.lucko.gchat.api;
 
 import com.velocitypowered.api.proxy.Player;
+import me.lucko.gchat.GChatPlayer;
+import me.lucko.gchat.placeholder.StringSplitter;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * Represents a placeholder replacement.
@@ -35,23 +38,83 @@ import net.kyori.adventure.text.TextComponent;
 public interface Placeholder {
 
     /**
-     * Gets a replacement for a given placeholder.
+     * Looks for a simple String replacement for the given definition.
      *
-     * @param player     the associated player
-     * @param definition the placeholder definition, without the outer "{ }" brackets.
-     * @return a replacement, or null if the definition cannot be satisfied by this {@link Placeholder}
+     * @param   player       The associated player
+     * @param   definition   The placeholder definition, without the outer "{ }" brackets.
+     *
+     * @return   A replacement, or null if the definition cannot be satisfied by this {@link Placeholder}
      */
-    String getReplacement(Player player, String definition);
+    String lookupStringReplacement(Player player, String definition);
 
     /**
-     * Get the replacement as a component
+     * Looks for a TextComponent replacement for the given definition.
+     *
+     * @param   player       The associated player
+     * @param   definition   The placeholder definition, without the outer "{ }" brackets.
+     *
+     * @return   A replacement, or null if the definition cannot be satisfied by this {@link Placeholder}
+     */
+    default TextComponent lookupTextComponentReplacement(Player player, String definition) {
+        return null;
+    }
+
+    /**
+     * Get the replacement as a component.
+     * This method will first attempt to use {@link #lookupTextComponentReplacement(Player, String)}.
+     * If that returns null, it will fall back to {@link #lookupStringReplacement(Player, String)}.
+     * It will not parse the result of the string lookup again.
+     *
+     * @param   player       The associated player
+     * @param   definition   The placeholder definition, without the outer "{ }" brackets.
+     *
+     * @return   A replacement, or null if the definition cannot be satisfied by this {@link Placeholder}
      */
     default TextComponent getTextComponentReplacement(Player player, String definition) {
 
-        String replacement = getReplacement(player, definition);
+        // If a TextComponent already exists, use that one
+        TextComponent result = this.lookupTextComponentReplacement(player, definition);
+
+        if (result != null) {
+            return result;
+        }
+
+        String replacement = this.lookupStringReplacement(player, definition);
 
         if (replacement == null) {
             return null;
+        }
+
+        return Component.text(replacement);
+    }
+
+    /**
+     * Get the replacement as a component
+     *
+     * @param   player       The associated player
+     * @param   entry        The placeholder definition, as a StringSplitter.Entry (containing extra info)
+     *
+     * @return   A replacement, or null if the definition cannot be satisfied by this {@link Placeholder}
+     */
+    default TextComponent getTextComponentReplacement(Player player, @NotNull StringSplitter.Entry entry) {
+
+        String key = entry.getContent();
+
+        // If a TextComponent already exists, use that one
+        TextComponent result = this.lookupTextComponentReplacement(player, key);
+
+        if (result != null) {
+            return result;
+        }
+
+        String replacement = this.lookupStringReplacement(player, key);
+
+        if (replacement == null) {
+            return null;
+        }
+
+        if (entry.allowsDecoration()) {
+            return GChatPlayer.get(player).convertString(null, replacement, null);
         }
 
         return Component.text(replacement);

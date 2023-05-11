@@ -495,116 +495,36 @@ public class GChatPlayer {
     public TextComponent convertString(ServerInfo server_info, String source, @Nullable Map<String, String> parameters) {
 
         // Create the empty result. We'll append to this.
-        TextComponent result = GChatPlugin.convertString(source, placeholder -> {
+        TextComponent result = GChatPlugin.convertString(source, placeholder_entry -> {
+
+            String key = placeholder_entry.getContent();
 
             if (parameters != null) {
-                String value = parameters.get(placeholder);
+                String value = parameters.get(key);
 
                 if (value != null) {
+
+                    // If the placeholder allows decoration, parse it again
+                    if (placeholder_entry.allowsDecoration() && !value.equals(key)) {
+                        return this.convertString(server_info, value, null);
+                    }
+
+                    // Return the value as-is
                     return Component.text(value);
                 }
             }
 
             // Get the value from the server-specific placeholders
-            TextComponent replacement = this.getServerPlaceholder(server_info, placeholder);
+            TextComponent replacement = this.getServerPlaceholder(server_info, key);
 
             if (replacement != null) {
                 return replacement;
             }
 
-            return GChatPlugin.instance.lookupRegisteredPlaceholders(this.player, placeholder);
+            return GChatPlugin.instance.lookupRegisteredPlaceholders(this.player, placeholder_entry);
         });
 
         return result;
-    }
-
-    /**
-     * Format the given message,
-     * but use server-specific placeholders first.
-     *
-     * @author   Jelle De Loecker
-     * @since    3.1.0
-     */
-    public TextComponent old_formatForServer(ServerInfo server_info, String format_name, @Nullable Map<String, String> parameters) {
-
-        // Get the format to use for this player
-        ChatFormat format = GChatPlugin.instance.getFormat(this.player, format_name).orElse(null);
-
-        if (format == null) {
-            ErrorSentry.logWarning("Failed to find format '" + format_name + "'");
-            return null;
-        }
-
-        // Get the actual text pattern. This might contain placeholders.
-        String text = format.getFormatText();
-
-        if (text == null) {
-            return null;
-        }
-
-        // Create the empty result. We'll append to this.
-        TextComponent result = Component.text("");
-
-        String hover = format.getHoverText();
-        String click_value = format.getClickValue();
-
-        if (parameters != null) {
-            for (Map.Entry<String, String> entry : parameters.entrySet()) {
-                String key = "{" + entry.getKey() + "}";
-                String value = entry.getValue();
-
-                text = text.replace(key, value);
-                if (hover != null) {
-                    hover = hover.replace(key, value);
-                }
-                if (click_value != null) {
-                    click_value = click_value.replace(key, value);
-                }
-            }
-        }
-
-        text = GChatPlugin.instance.replacePlaceholders(player, text);
-
-        if (text == null) {
-            System.out.println("Failed to format text for '" + format_name + "'");
-            return null;
-        }
-
-        // get any hover text, and apply replacements.
-        hover = GChatPlugin.instance.replacePlaceholders(player, hover);
-
-        // get the click event type, and the value if present.
-        ClickEvent.Action click_type = format.getClickType();
-
-        if (click_type != null) {
-            click_value = GChatPlugin.instance.replacePlaceholders(player, click_value);
-        }
-
-        // apply any hover events
-        HoverEvent<Component> hover_event = hover == null ? null : HoverEvent.showText(this.deserialize(hover));
-        ClickEvent click_event = click_type == null ? null : ClickEvent.clickEvent(click_type, click_value);
-
-        TextComponent text_component = this.deserialize(text);
-        TextComponent message_component = null;
-
-        if (text_component != null) {
-            TextComponent.Builder builder = text_component.toBuilder();
-
-            message_component = builder.applyDeep(m -> {
-                Component mComponent = m.build();
-
-                if (hover_event != null && mComponent.hoverEvent() == null) {
-                    m.hoverEvent(hover_event);
-                }
-                if (click_event != null && mComponent.clickEvent() == null) {
-                    m.clickEvent(click_event);
-                }
-            }).build();
-
-            return message_component;
-        } else {
-            return null;
-        }
     }
 
     /**
@@ -787,7 +707,7 @@ public class GChatPlayer {
      */
     @FunctionalInterface
     public interface PlaceholderResolver {
-        TextComponent replace(String placeholder);
+        TextComponent replace(StringSplitter.Entry placeholder_entry);
     }
 
     static {
