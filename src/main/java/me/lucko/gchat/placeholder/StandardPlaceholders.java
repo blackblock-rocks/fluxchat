@@ -29,11 +29,33 @@ import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ServerConnection;
 import me.lucko.gchat.GChatPlayer;
 import me.lucko.gchat.api.Placeholder;
+import net.kyori.adventure.text.TextComponent;
 
 public class StandardPlaceholders implements Placeholder {
 
     private static final String TPS_FORMAT = "%.1f";
     private static final String MSPT_FORMAT = "%.1f";
+
+    /**
+     * Looks for a TextComponent replacement for the given definition.
+     *
+     * @param   player       The associated player
+     * @param   definition   The placeholder definition, without the outer "{ }" brackets.
+     *
+     * @return   A replacement, or null if the definition cannot be satisfied by this {@link Placeholder}
+     */
+    @Override
+    public TextComponent lookupTextComponentReplacement(Player player, String definition) {
+
+        definition = definition.toLowerCase();
+
+        switch (definition) {
+            case "tab_display_name":
+                return GChatPlayer.get(player).getTabDisplayName();
+        };
+
+        return null;
+    }
 
     @Override
     public String lookupStringReplacement(Player player, String definition) {

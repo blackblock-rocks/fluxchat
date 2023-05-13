@@ -186,6 +186,8 @@ public class GChatPlugin implements GChatApi {
         commandManager.register("me", new MeCommand("me"));
         commandManager.register("say", new MeCommand("say"));
 
+        commandManager.register("afk", new AfkCommand());
+
         proxy.getEventManager().register(this, new PluginMessageHook(this));
         proxy.getChannelRegistrar().register(GCHAT_CHANNEL);
         proxy.getChannelRegistrar().register(SERVER_MOVE_CHANNEL);

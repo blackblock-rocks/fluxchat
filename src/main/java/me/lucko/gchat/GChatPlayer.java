@@ -13,6 +13,8 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
@@ -39,6 +41,8 @@ public class GChatPlayer {
     protected String nickname = null;
     protected String nickname_color = null;
     protected DateFormat date_format = null;
+    protected boolean is_afk = false;
+    protected Long afk_since = null;
     public static final Map<String, String> COLOR_MAP = new HashMap<>();
 
     public static final HashMap<UUID, GChatPlayer> CACHE = new HashMap<>();
@@ -140,6 +144,24 @@ public class GChatPlayer {
         }
 
         return display_name;
+    }
+
+    /**
+     * Get the name to use in the tablist.
+     * This will be gray if the player is AFK
+     *
+     * @author   Jelle De Loecker
+     * @since    3.2.0
+     */
+    public TextComponent getTabDisplayName() {
+
+        if (this.getAfk()) {
+            return Component.text(this.getDisplayName() + " (AFK)").color(NamedTextColor.GRAY).decorate(TextDecoration.ITALIC);
+        } else {
+            return GChatPlugin.convertString(this.getColouredDisplayName(), placeholder_entry -> {
+                return GChatPlugin.instance.lookupRegisteredPlaceholders(this.player, placeholder_entry);
+            });
+        }
     }
 
     /**
@@ -580,6 +602,35 @@ public class GChatPlayer {
         }
 
         return null;
+    }
+
+    /**
+     * Set the AFK status of this player
+     *
+     * @since    3.2.0
+     */
+    public void setAfk(boolean afk) {
+
+        if (this.is_afk == afk) {
+            return;
+        }
+
+        this.is_afk = afk;
+
+        if (afk) {
+            this.afk_since = System.currentTimeMillis();
+        } else {
+            this.afk_since = null;
+        }
+    }
+
+    /**
+     * Is this player AFK?
+     *
+     * @since    3.2.0
+     */
+    public boolean getAfk() {
+        return this.is_afk;
     }
 
     /**

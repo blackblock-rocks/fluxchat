@@ -235,7 +235,6 @@ public class GChatTabList {
         ServerInfo other_server = null;
         ServerInfo target_server = null;
 
-
         if (current_connection != null) {
             target_server = current_connection.getServer().getServerInfo();
         }

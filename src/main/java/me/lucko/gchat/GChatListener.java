@@ -184,6 +184,9 @@ public class GChatListener {
 
         GChatPlayer gplayer = GChatPlayer.get(player);
 
+        // Simple chat messages takes a player out of AFK
+        gplayer.setAfk(false);
+
         TextComponent message = Component.text(e.getMessage());
 
         PlaceholderParameters parameters = new PlaceholderParameters();
