@@ -6,6 +6,7 @@ import com.velocitypowered.api.proxy.ServerConnection;
 import com.velocitypowered.api.proxy.server.ServerInfo;
 import me.lucko.gchat.api.ChatFormat;
 import me.lucko.gchat.monitoring.ErrorSentry;
+import me.lucko.gchat.placeholder.PlaceholderParameters;
 import me.lucko.gchat.placeholder.SplittedStringList;
 import me.lucko.gchat.placeholder.StringSplitter;
 import net.kyori.adventure.text.Component;
@@ -395,7 +396,7 @@ public class GChatPlayer {
      * @author   Jelle De Loecker
      * @since    3.2.0
      */
-    public TextComponent formatForServer(ServerInfo server_info, String format_name, @Nullable Map<String, String> parameters) {
+    public TextComponent formatForServer(ServerInfo server_info, String format_name, @Nullable PlaceholderParameters parameters) {
 
         // Get the format to use for this player
         ChatFormat format = GChatPlugin.instance.getFormat(this.player, format_name).orElse(null);
@@ -415,7 +416,7 @@ public class GChatPlayer {
      * @author   Jelle De Loecker
      * @since    3.2.0
      */
-    public TextComponent formatForServer(ServerInfo server_info, @NotNull ChatFormat format, @Nullable Map<String, String> parameters) {
+    public TextComponent formatForServer(ServerInfo server_info, @NotNull ChatFormat format, @Nullable PlaceholderParameters parameters) {
 
         // Get the actual text pattern. This might contain placeholders.
         SplittedStringList main_source = format.getSplittedFormatText();
@@ -493,12 +494,12 @@ public class GChatPlayer {
      * @author   Jelle De Loecker
      * @since    3.2.0
      */
-    public TextComponent convertString(ServerInfo server_info, String source, @Nullable Map<String, String> parameters) {
+    public TextComponent convertString(ServerInfo server_info, String source, @Nullable PlaceholderParameters parameters) {
         SplittedStringList splitted = StringSplitter.parse(source);
         return this.convertString(server_info, splitted, parameters);
     }
 
-    public TextComponent convertString(ServerInfo server_info, SplittedStringList source, @Nullable Map<String, String> parameters) {
+    public TextComponent convertString(ServerInfo server_info, SplittedStringList source, @Nullable PlaceholderParameters parameters) {
 
         // Create the empty result. We'll append to this.
         TextComponent result = GChatPlugin.convertString(source, placeholder_entry -> {
@@ -506,7 +507,14 @@ public class GChatPlayer {
             String key = placeholder_entry.getContent();
 
             if (parameters != null) {
-                String value = parameters.get(key);
+
+                TextComponent replacement = parameters.getFromTextComponent(key);
+
+                if (replacement != null) {
+                    return replacement;
+                }
+
+                String value = parameters.getFromStringValues(key);
 
                 if (value != null) {
 
@@ -539,7 +547,7 @@ public class GChatPlayer {
      * @author   Jelle De Loecker
      * @since    3.1.0
      */
-    public TextComponent format(String format_name, @Nullable Map<String, String> parameters) {
+    public TextComponent format(String format_name, @Nullable PlaceholderParameters parameters) {
         return this.formatForServer(null, format_name, parameters);
     }
 

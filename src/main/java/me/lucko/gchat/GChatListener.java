@@ -42,6 +42,7 @@ import me.lucko.gchat.api.events.GChatEvent;
 import me.lucko.gchat.api.events.GChatMessageFormedEvent;
 import me.lucko.gchat.api.events.GChatMessageSendEvent;
 import me.lucko.gchat.config.GChatConfig;
+import me.lucko.gchat.placeholder.PlaceholderParameters;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.event.ClickEvent;
@@ -92,10 +93,10 @@ public class GChatListener {
         this.broadcastMessage(message);
     }
 
-    public Map<String, String> getServerParameters(ServerInfo info) {
-        Map<String, String> parameters = new HashMap<>();
-        parameters.put("server", info.getName());
-        parameters.put("server_name", info.getName());
+    public PlaceholderParameters getServerParameters(ServerInfo info) {
+        PlaceholderParameters parameters = new PlaceholderParameters();
+        parameters.set("server", info.getName());
+        parameters.set("server_name", info.getName());
         return parameters;
     }
 
@@ -183,8 +184,10 @@ public class GChatListener {
 
         GChatPlayer gplayer = GChatPlayer.get(player);
 
-        Map<String, String> parameters = new HashMap<>();
-        parameters.put("message", e.getMessage());
+        TextComponent message = Component.text(e.getMessage());
+
+        PlaceholderParameters parameters = new PlaceholderParameters();
+        parameters.set("message", message);
 
         TextComponent outgoing_message = gplayer.format("chat", parameters);
 
@@ -200,7 +203,8 @@ public class GChatListener {
         // we have a format, so cancel the event.
         e.setResult(PlayerChatEvent.ChatResult.denied());
 
-        parameters.put("message", "<aqua>" + e.getMessage());
+        message = message.color(NamedTextColor.AQUA);
+        parameters.set("message", message);
         TextComponent self_message = gplayer.format("chat", parameters);
 
         ChatFormat format = plugin.getFormat(player, "chat").orElse(null);

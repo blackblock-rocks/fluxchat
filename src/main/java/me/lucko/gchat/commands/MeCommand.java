@@ -2,6 +2,8 @@ package me.lucko.gchat.commands;
 
 import com.velocitypowered.api.command.SimpleCommand;
 import me.lucko.gchat.GChatPlayer;
+import me.lucko.gchat.placeholder.PlaceholderParameters;
+import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 
@@ -38,9 +40,8 @@ public class MeCommand implements SimpleCommand {
 
         String message = String.join(" ", Arrays.copyOfRange(args, 0, args.length));
 
-        Map<String, String> parameters = new HashMap<>();
-        parameters.put("message", MiniMessage.miniMessage().escapeTags(message));
-
+        PlaceholderParameters parameters = new PlaceholderParameters();
+        parameters.set("message", Component.text(message));
         TextComponent me_message = player.format(this.format, parameters);
 
         if (me_message == null) {

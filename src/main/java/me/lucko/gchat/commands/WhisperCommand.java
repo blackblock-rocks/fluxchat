@@ -10,6 +10,7 @@ import me.lucko.gchat.GChatPlayer;
 import me.lucko.gchat.GChatPlugin;
 import me.lucko.gchat.api.ChatFormat;
 import me.lucko.gchat.config.GChatConfig;
+import me.lucko.gchat.placeholder.PlaceholderParameters;
 import me.xdrop.fuzzywuzzy.FuzzySearch;
 import me.xdrop.fuzzywuzzy.model.ExtractedResult;
 import net.kyori.adventure.text.Component;
@@ -79,10 +80,10 @@ public class WhisperCommand implements SimpleCommand  {
         GChatPlayer sender = GChatPlayer.get(player);
         String message = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
 
-        Map<String, String> parameters = new HashMap<>();
-        parameters.put("message", MiniMessage.miniMessage().escapeTags(message));
-        parameters.put("receiver", receiver.getDisplayName());
-        parameters.put("sender", sender.getDisplayName());
+        PlaceholderParameters parameters = new PlaceholderParameters();
+        parameters.set("message", Component.text(message));
+        parameters.set("receiver", receiver.getDisplayName());
+        parameters.set("sender", sender.getDisplayName());
 
         TextComponent outgoing_message = sender.format("whisper-out", parameters);
         TextComponent incoming_message = receiver.format("whisper", parameters);
