@@ -203,9 +203,11 @@ public class GChatListener {
         // we have a format, so cancel the event.
         e.setResult(PlayerChatEvent.ChatResult.denied());
 
+        PlaceholderParameters self_parameters = new PlaceholderParameters();
         message = message.color(NamedTextColor.AQUA);
-        parameters.set("message", message);
-        TextComponent self_message = gplayer.format("chat", parameters);
+        self_parameters.set("message", message);
+
+        TextComponent self_message = gplayer.format("chat", self_parameters);
 
         ChatFormat format = plugin.getFormat(player, "chat").orElse(null);
 
@@ -215,6 +217,9 @@ public class GChatListener {
         if (config.isLogChatGlobal()) {
             plugin.getLogger().info(PlainTextComponentSerializer.plainText().serialize(outgoing_message));
         }
+
+        Map<ServerInfo, TextComponent> server_output = new HashMap<>();
+        TextComponent current_message = null;
 
         // send the message to online players
         for (Player p : proxy.getAllPlayers()) {
@@ -226,11 +231,25 @@ public class GChatListener {
                 continue;
             }
 
-            if (player.getUniqueId().equals(p.getUniqueId())) {
-                p.sendMessage(player, self_message);
-            } else {
-                p.sendMessage(player, outgoing_message);
+            ServerConnection server_connection = p.getCurrentServer().orElse(null);
+
+            if (server_connection == null) {
+                continue;
             }
+
+            ServerInfo server_info = server_connection.getServerInfo();
+
+            if (server_info == null) {
+                continue;
+            }
+
+            if (player.getUniqueId().equals(p.getUniqueId())) {
+                current_message = gplayer.formatForServer(server_info, "chat", self_parameters);
+            } else {
+                current_message = gplayer.formatForServer(server_info, "chat", parameters);
+            }
+
+            p.sendMessage(player, current_message);
         }
     }
 
