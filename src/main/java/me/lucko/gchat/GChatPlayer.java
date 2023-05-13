@@ -731,9 +731,14 @@ public class GChatPlayer {
         COLOR_MAP.put("&3", "dark_aqua");
         COLOR_MAP.put("&4", "dark_red");
         COLOR_MAP.put("&5", "dark_purple");
+        COLOR_MAP.put("&6", "gold");
+        COLOR_MAP.put("&7", "gray");
+        COLOR_MAP.put("&8", "dark_gray");
 
         COLOR_MAP.put("&9", "blue");
         COLOR_MAP.put("&a", "green");
+        COLOR_MAP.put("&b", "aqua");
+        COLOR_MAP.put("&c", "red");
 
         COLOR_MAP.put("&d", "light_purple");
         COLOR_MAP.put("&e", "yellow");

@@ -59,7 +59,17 @@ public class NicknameCommand implements SimpleCommand {
 
         if (args.length == 2) {
             color_name = args[1];
-            String code = getKey(color_name, COLORS);
+            String code = null;
+
+            if (invocation.source().hasPermission("gchat.all_colors")) {
+                if (color_name.equals("GOLD")) {
+                    code = "&6";
+                }
+            }
+
+            if (code == null) {
+                code = getKey(color_name, COLORS);
+            }
 
             if (code == null) {
                 color_name = null;
@@ -102,7 +112,16 @@ public class NicknameCommand implements SimpleCommand {
         List<String> args = Arrays.asList(invocation.arguments());
 
         if (args.size() > 1) {
-            return COLORS.values().stream().toList();
+
+            List<String> color_list = COLORS.values().stream().toList();
+
+            if (invocation.source().hasPermission("gchat.all_colors")) {
+                color_list = new ArrayList<>(color_list);
+
+                color_list.add("GOLD");
+            }
+
+            return color_list;
         }
 
         return ImmutableList.of();
