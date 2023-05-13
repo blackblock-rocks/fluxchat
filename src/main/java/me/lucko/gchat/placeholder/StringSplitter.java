@@ -32,7 +32,7 @@ public class StringSplitter {
             if (openingTagIndex == -1 && placeholderIndex == -1) {
                 // No more tags or placeholders found, add the remaining plain text
                 String plainText = input.substring(start_index);
-                result.add(new Entry(plainText));
+                Entry.parseFurther(plainText, result);
                 break;
             }
 
@@ -41,7 +41,7 @@ public class StringSplitter {
                 // Found an opening tag
                 if (openingTagIndex > start_index) {
                     String plainText = input.substring(start_index, openingTagIndex);
-                    result.add(new Entry(plainText));
+                    Entry.parseFurther(plainText, result);
                 }
 
                 // Find the corresponding closing tag
@@ -49,7 +49,7 @@ public class StringSplitter {
                 if (closingTagIndex == -1) {
                     // Invalid tag format, treat it as plain text
                     String invalidTag = input.substring(openingTagIndex, openingTagIndex + 1);
-                    result.add(new Entry(invalidTag));
+                    Entry.parseFurther(invalidTag, result);
                     start_index = openingTagIndex + 1;
                 } else {
                     // Extract the tag content
@@ -61,7 +61,7 @@ public class StringSplitter {
                 // Found a placeholder
                 if (placeholderIndex > start_index) {
                     String plainText = input.substring(start_index, placeholderIndex);
-                    result.add(new Entry(plainText));
+                    Entry.parseFurther(plainText, result);
                 }
 
                 // Find the corresponding closing placeholder
@@ -69,7 +69,7 @@ public class StringSplitter {
                 if (closingPlaceholderIndex == -1) {
                     // Invalid placeholder format, treat it as plain text
                     String invalidPlaceholder = input.substring(placeholderIndex, placeholderIndex + 1);
-                    result.add(new Entry(invalidPlaceholder));
+                    Entry.parseFurther(invalidPlaceholder, result);
                     start_index = placeholderIndex + 1;
                 } else {
                     // Extract the placeholder content
@@ -102,6 +102,7 @@ public class StringSplitter {
         private boolean is_underlined = false;
         private boolean is_strikethrough = false;
         private boolean allows_decoration = true;
+        private boolean is_reset = false;
 
         /**
          * Instantiate a new entry as plain text
@@ -141,13 +142,23 @@ public class StringSplitter {
         }
 
         /**
+         * Is this a color code?
+         *
+         * @author   Jelle De Loecker
+         * @since    3.2.0
+         */
+        public boolean isColorCode() {
+            return this.type == EntryType.COLOR_CODE;
+        }
+
+        /**
          * See if this entry is an opening tag of some kind
          *
          * @author   Jelle De Loecker
          * @since    3.2.0
          */
         public boolean isOpeningTag() {
-            return this.type == EntryType.OPENING_TAG;
+            return this.type == EntryType.OPENING_TAG || this.type == EntryType.COLOR_CODE;
         }
 
         /**
@@ -230,21 +241,54 @@ public class StringSplitter {
 
             String color_name = this.string.toLowerCase();
 
-            if (color_name.equals("bold")) {
-                this.is_bold = true;
+            if (this.isColorCode()) {
+                String code = color_name.substring(1);
+
+                switch (code) {
+                    case "l" -> this.is_bold = true;
+                    case "o" -> this.is_italic = true;
+                    case "k" -> this.is_obfuscated = true;
+                    case "n" -> this.is_underlined = true;
+                    case "m" -> this.is_strikethrough = true;
+                    case "r" -> this.is_reset = true;
+                    default -> {
+                        try {
+                            this.color = TextColor.color(Integer.parseInt(code, 16));
+                        } catch (Throwable nfe) {
+                            // Ignore
+                            this.color = null;
+                        }
+                    }
+                }
+
                 return;
-            } else if (color_name.equals("italic")) {
-                this.is_italic = true;
-                return;
-            } else if (color_name.equals("obfuscated")) {
-                this.is_obfuscated = true;
-                return;
-            } else if (color_name.equals("underlined")) {
-                this.is_underlined = true;
-                return;
-            } else if (color_name.equals("strikethrough")) {
-                this.is_strikethrough = true;
-                return;
+            }
+
+            switch (color_name) {
+                case "bold" -> {
+                    this.is_bold = true;
+                    return;
+                }
+                case "italic" -> {
+                    this.is_italic = true;
+                    return;
+                }
+                case "obfuscated" -> {
+                    this.is_obfuscated = true;
+                    return;
+                }
+                case "underlined" -> {
+                    this.is_underlined = true;
+                    return;
+                }
+                case "strikethrough" -> {
+                    this.is_strikethrough = true;
+                    return;
+                }
+                case "reset" -> {
+                    this.is_reset = true;
+                    return;
+                }
             }
 
             // If the color starts with a hashtag, it's a numeric value
@@ -301,6 +345,64 @@ public class StringSplitter {
         public String getContent() {
             return this.string;
         }
+
+        /**
+         * Parse a string that does not contain any placeholders or tags
+         *
+         * @author   Jelle De Loecker
+         * @since    3.2.0
+         */
+        public static void parseFurther(String text, List<Entry> list) {
+
+            // The text can look like this at this point: "§eYellow §cRed"
+            // We need to split it up into separate entries: "§e", "Yellow ", "§c", "Red"
+
+            List<String> parts = new ArrayList<>();
+            StringBuilder builder = new StringBuilder();
+            boolean last_was_tag = false;
+
+            for (int i = 0; i < text.length(); i++) {
+                char c = text.charAt(i);
+
+                if (c == '§') {
+                    if (builder.length() > 0) {
+                        parts.add(builder.toString());
+                        builder.setLength(0);
+                    }
+
+                    builder.append(c);
+                    last_was_tag = true;
+                } else {
+                    if (last_was_tag) {
+                        builder.append(c);
+                        parts.add(builder.toString());
+                        builder.setLength(0);
+                        last_was_tag = false;
+                        continue;
+                    }
+
+                    builder.append(c);
+                }
+            }
+
+            if (!builder.isEmpty()) {
+                parts.add(builder.toString());
+            }
+
+            for (String part : parts) {
+                if (part.isEmpty()) {
+                    continue;
+                }
+
+                if (part.charAt(0) == '§') {
+                    list.add(new Entry(part, EntryType.COLOR_CODE));
+                } else {
+                    list.add(new Entry(part, EntryType.PLAIN_TEXT));
+                }
+            }
+
+        }
+
     }
 
     /**
@@ -313,6 +415,7 @@ public class StringSplitter {
         PLAIN_TEXT,
         PLACEHOLDER,
         OPENING_TAG,
-        CLOSING_TAG
+        CLOSING_TAG,
+        COLOR_CODE
     }
 }
