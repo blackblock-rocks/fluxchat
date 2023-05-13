@@ -54,6 +54,8 @@ import me.lucko.gchat.hooks.LuckPermsHook;
 import me.lucko.gchat.hooks.NeutronN3FSHook;
 import me.lucko.gchat.hooks.PluginMessageHook;
 import me.lucko.gchat.hooks.TimerHook;
+import me.lucko.gchat.placeholder.SplittedStringConverter;
+import me.lucko.gchat.placeholder.SplittedStringList;
 import me.lucko.gchat.placeholder.StandardPlaceholders;
 import me.lucko.gchat.placeholder.StringSplitter;
 import me.lucko.gchat.tab.GChatTabList;
@@ -516,64 +518,10 @@ public class GChatPlugin implements GChatApi {
      */
     public static TextComponent convertString(String string, GChatPlayer.PlaceholderResolver resolver) {
 
-        List<StringSplitter.Entry> entries = StringSplitter.parse(string);
+        SplittedStringList entries = StringSplitter.parse(string);
+        SplittedStringConverter converter = new SplittedStringConverter(entries, resolver);
 
-        TextComponent.Builder root = Component.text();
-        TextComponent.Builder current = root;
-
-        List<TextComponent.Builder> all = new ArrayList<>();
-        List<TextComponent.Builder> chain = new ArrayList<>();
-        chain.add(root);
-        all.add(root);
-
-        int i = 0;
-
-        for (StringSplitter.Entry entry : entries) {
-            i++;
-
-            if (entry.isOpeningTag()) {
-                current = Component.text();
-                entry.applyStyle(current);
-
-                chain.add(current);
-                all.add(current);
-                continue;
-            }
-
-            if (entry.isClosingTag()) {
-                TextComponent.Builder ending = current;
-                chain.remove(chain.size() - 1);
-                current = chain.get(chain.size() - 1);
-                current.append(ending.build());
-                continue;
-            }
-
-            String piece = entry.getContent();
-            TextComponent entry_component;
-
-            if (entry.isPlaceholder()) {
-                entry_component = resolver.replace(entry);
-            } else {
-                entry_component = Component.text(piece);
-            }
-
-            if (entry_component == null) {
-                continue;
-            }
-
-            current.append(entry_component);
-        }
-
-        // Close all the unclosed entries in the chain
-        for (int j = chain.size() - 1; j > 0; j--) {
-            TextComponent.Builder parent = chain.get(j - 1);
-            TextComponent.Builder entry = chain.get(j);
-            parent.append(entry.build());
-        }
-
-        TextComponent result = root.build();
-
-        return result;
+        return converter.toTextComponent();
     }
 
     /**

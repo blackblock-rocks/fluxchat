@@ -17,72 +17,139 @@ import java.util.List;
  */
 public class StringSplitter {
 
-    public static List<Entry> parse(String input) {
+    private enum State {
+        PLAIN_TEXT,
+        OPEN_TAG,
+        CLOSE_TAG,
+        PLACEHOLDER
+    }
 
-        List<Entry> result = new ArrayList<>();
-        int start_index = 0;
+    public static SplittedStringList parse(String input) {
+
+        SplittedStringList result = new SplittedStringList();
+        State current_state = State.PLAIN_TEXT;
+
         int length = input.length();
+        int current_index = 0;
+        StringBuilder string_buffer = new StringBuilder();
 
-        while (start_index < length) {
+        for (current_index = 0; current_index < length; current_index++) {
 
-            // Find the next opening tag or placeholder
-            int openingTagIndex = input.indexOf("<", start_index);
-            int placeholderIndex = input.indexOf("{", start_index);
+            // We're going to parse this string 1 char at a time
+            char current_char = input.charAt(current_index);
+            State new_state = null;
 
-            if (openingTagIndex == -1 && placeholderIndex == -1) {
-                // No more tags or placeholders found, add the remaining plain text
-                String plainText = input.substring(start_index);
-                Entry.parseFurther(plainText, result);
-                break;
+            if (current_state == State.PLAIN_TEXT) {
+                if (current_char == '<') {
+
+                    // Look for the closing '>' character
+                    int closing_index = input.indexOf('>', current_index);
+
+                    if (closing_index == -1) {
+                        string_buffer.append(current_char);
+                        continue;
+                    }
+
+                    // See if there is another '<' character before the closing '>'
+                    int opening_index = input.indexOf('<', current_index + 1);
+
+                    if (opening_index != -1 && opening_index < closing_index) {
+                        // There is another '<' before the closing '>', so this is not a tag
+                        string_buffer.append(current_char);
+                        continue;
+                    }
+
+                    // See if there is a '{' character before the closing '>'
+                    opening_index = input.indexOf('{', current_index + 1);
+
+                    if (opening_index != -1 && opening_index < closing_index) {
+                        // There is a '{' before the closing '>', so this is not a tag
+                        string_buffer.append(current_char);
+                        continue;
+                    }
+
+                    // Get the next character
+                    char next_char = input.charAt(current_index + 1);
+
+                    if (next_char == '/') {
+                        // This is a closing tag
+                        new_state = State.CLOSE_TAG;
+                        current_index++;
+                    } else {
+
+                        // If the next_char is not a letter, this is not a tag
+                        if (!Character.isLetter(next_char)) {
+                            string_buffer.append(current_char);
+                            continue;
+                        }
+
+                        // This is an opening tag
+                        new_state = State.OPEN_TAG;
+                    }
+
+                } else if (current_char == '{') {
+                    new_state = State.PLACEHOLDER;
+                }
+            } else if (current_state == State.OPEN_TAG || current_state == State.CLOSE_TAG) {
+                if (current_char == '>') {
+                    new_state = State.PLAIN_TEXT;
+                }
+            } else if (current_state == State.PLACEHOLDER) {
+                if (current_char == '}') {
+                    new_state = State.PLAIN_TEXT;
+                }
             }
 
-            // Determine the next occurrence
-            if (openingTagIndex != -1 && (placeholderIndex == -1 || openingTagIndex < placeholderIndex)) {
-                // Found an opening tag
-                if (openingTagIndex > start_index) {
-                    String plainText = input.substring(start_index, openingTagIndex);
-                    Entry.parseFurther(plainText, result);
+            // Keep appending chars as long as the state doesn't change
+            if (new_state == null) {
+                string_buffer.append(current_char);
+                continue;
+            }
+
+            if (!string_buffer.isEmpty()) {
+                String current_string_result = string_buffer.toString();
+
+                if (current_state == State.PLAIN_TEXT) {
+                    // Add the plain text
+                    Entry.parseSimplerText(current_string_result, result);
+                } else if (current_state == State.OPEN_TAG) {
+                    // Add the open tag
+                    result.add(new Entry(current_string_result, EntryType.OPENING_TAG));
+                } else if (current_state == State.CLOSE_TAG) {
+                    // Add the close tag
+                    result.add(new Entry(current_string_result, EntryType.CLOSING_TAG));
+                } else if (current_state == State.PLACEHOLDER) {
+                    // Add the placeholder
+                    result.add(new Entry(current_string_result, EntryType.PLACEHOLDER));
                 }
 
-                // Find the corresponding closing tag
-                int closingTagIndex = input.indexOf(">", openingTagIndex);
-                if (closingTagIndex == -1) {
-                    // Invalid tag format, treat it as plain text
-                    String invalidTag = input.substring(openingTagIndex, openingTagIndex + 1);
-                    Entry.parseFurther(invalidTag, result);
-                    start_index = openingTagIndex + 1;
-                } else {
-                    // Extract the tag content
-                    String tagContent = input.substring(openingTagIndex + 1, closingTagIndex);
-                    result.add(new Entry(tagContent, EntryType.OPENING_TAG));
-                    start_index = closingTagIndex + 1;
-                }
-            } else if (placeholderIndex != -1 && (openingTagIndex == -1 || placeholderIndex < openingTagIndex)) {
-                // Found a placeholder
-                if (placeholderIndex > start_index) {
-                    String plainText = input.substring(start_index, placeholderIndex);
-                    Entry.parseFurther(plainText, result);
-                }
+                string_buffer.setLength(0);
+            }
 
-                // Find the corresponding closing placeholder
-                int closingPlaceholderIndex = input.indexOf("}", placeholderIndex);
-                if (closingPlaceholderIndex == -1) {
-                    // Invalid placeholder format, treat it as plain text
-                    String invalidPlaceholder = input.substring(placeholderIndex, placeholderIndex + 1);
-                    Entry.parseFurther(invalidPlaceholder, result);
-                    start_index = placeholderIndex + 1;
-                } else {
-                    // Extract the placeholder content
-                    String placeholderContent = input.substring(placeholderIndex + 1, closingPlaceholderIndex);
-                    result.add(new Entry(placeholderContent, EntryType.PLACEHOLDER));
-                    start_index = closingPlaceholderIndex + 1;
-                }
+            current_state = new_state;
+        }
+
+        if (!string_buffer.isEmpty()) {
+            // Add the last part
+            String current_string_result = string_buffer.toString();
+
+            if (current_state == State.PLAIN_TEXT) {
+                // Add the plain text
+                Entry.parseSimplerText(current_string_result, result);
+            } else if (current_state == State.OPEN_TAG) {
+                // Add the open tag
+                result.add(new Entry(current_string_result, EntryType.OPENING_TAG));
+            } else if (current_state == State.CLOSE_TAG) {
+                // Add the close tag
+                result.add(new Entry(current_string_result, EntryType.CLOSING_TAG));
+            } else if (current_state == State.PLACEHOLDER) {
+                // Add the placeholder
+                result.add(new Entry(current_string_result, EntryType.PLACEHOLDER));
             }
         }
 
         return result;
     }
-
 
     /**
      * An entry representing a piece of text (or a placeholder)
@@ -103,6 +170,7 @@ public class StringSplitter {
         private boolean is_strikethrough = false;
         private boolean allows_decoration = true;
         private boolean is_reset = false;
+        private String tag_name = null;
 
         /**
          * Instantiate a new entry as plain text
@@ -129,6 +197,17 @@ public class StringSplitter {
 
             this.string = content;
             this.type = type;
+        }
+
+        /**
+         * Is this a reset?
+         *
+         * @author   Jelle De Loecker
+         * @since    3.2.0
+         */
+        public boolean isReset() {
+            this.parseTag();
+            return this.is_reset;
         }
 
         /**
@@ -169,6 +248,18 @@ public class StringSplitter {
          */
         public boolean isClosingTag() {
             return this.type == EntryType.CLOSING_TAG;
+        }
+
+        /**
+         * Get the tag name
+         *
+         * @author   Jelle De Loecker
+         * @since    3.2.0
+         */
+        @Nullable
+        public String getTagName() {
+            this.parseTag();
+            return this.tag_name;
         }
 
         /**
@@ -239,7 +330,14 @@ public class StringSplitter {
                 return;
             }
 
-            String color_name = this.string.toLowerCase();
+            String color_name = this.string.toLowerCase().trim();
+
+            if (this.isClosingTag()) {
+                this.tag_name = color_name;
+                return;
+            }
+
+            this.tag_name = color_name;
 
             if (this.isColorCode()) {
                 String code = color_name.substring(1);
@@ -253,7 +351,7 @@ public class StringSplitter {
                     case "r" -> this.is_reset = true;
                     default -> {
                         try {
-                            this.color = TextColor.color(Integer.parseInt(code, 16));
+                            this.color = this.parseColorCode(code);
                         } catch (Throwable nfe) {
                             // Ignore
                             this.color = null;
@@ -327,6 +425,42 @@ public class StringSplitter {
         }
 
         /**
+         * Parse a color code
+         *
+         * @author   Jelle De Loecker
+         * @since    3.2.0
+         */
+        @Nullable
+        private TextColor parseColorCode(String code) {
+
+            if (code.length() == 2) {
+                return this.parseColorCode(code.substring(1));
+            }
+
+            TextColor result = switch (code) {
+                case "0" -> NamedTextColor.BLACK;
+                case "1" -> NamedTextColor.DARK_BLUE;
+                case "2" -> NamedTextColor.DARK_GREEN;
+                case "3" -> NamedTextColor.DARK_AQUA;
+                case "4" -> NamedTextColor.DARK_RED;
+                case "5" -> NamedTextColor.DARK_PURPLE;
+                case "6" -> NamedTextColor.GOLD;
+                case "7" -> NamedTextColor.GRAY;
+                case "8" -> NamedTextColor.DARK_GRAY;
+                case "9" -> NamedTextColor.BLUE;
+                case "a" -> NamedTextColor.GREEN;
+                case "b" -> NamedTextColor.AQUA;
+                case "c" -> NamedTextColor.RED;
+                case "d" -> NamedTextColor.LIGHT_PURPLE;
+                case "e" -> NamedTextColor.YELLOW;
+                case "f" -> NamedTextColor.WHITE;
+                default -> null;
+            };
+
+            return result;
+        }
+
+        /**
          * Get the color this entry starts
          *
          * @author   Jelle De Loecker
@@ -347,12 +481,13 @@ public class StringSplitter {
         }
 
         /**
-         * Parse a string that does not contain any placeholders or tags
+         * Parse a string that does not contain any placeholders or tags,
+         * but might contain formatting codes.
          *
          * @author   Jelle De Loecker
          * @since    3.2.0
          */
-        public static void parseFurther(String text, List<Entry> list) {
+        public static void parseSimplerText(String text, SplittedStringList list) {
 
             // The text can look like this at this point: "§eYellow §cRed"
             // We need to split it up into separate entries: "§e", "Yellow ", "§c", "Red"
@@ -400,9 +535,7 @@ public class StringSplitter {
                     list.add(new Entry(part, EntryType.PLAIN_TEXT));
                 }
             }
-
         }
-
     }
 
     /**
