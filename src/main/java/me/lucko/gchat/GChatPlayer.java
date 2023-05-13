@@ -6,6 +6,7 @@ import com.velocitypowered.api.proxy.ServerConnection;
 import com.velocitypowered.api.proxy.server.ServerInfo;
 import me.lucko.gchat.api.ChatFormat;
 import me.lucko.gchat.monitoring.ErrorSentry;
+import me.lucko.gchat.placeholder.SplittedStringList;
 import me.lucko.gchat.placeholder.StringSplitter;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
@@ -417,7 +418,7 @@ public class GChatPlayer {
     public TextComponent formatForServer(ServerInfo server_info, @NotNull ChatFormat format, @Nullable Map<String, String> parameters) {
 
         // Get the actual text pattern. This might contain placeholders.
-        String main_source = format.getFormatText();
+        SplittedStringList main_source = format.getSplittedFormatText();
 
         if (main_source == null) {
             return null;
@@ -429,7 +430,7 @@ public class GChatPlayer {
             return null;
         }
 
-        String hover = format.getHoverText();
+        SplittedStringList hover = format.getSplittedHoverText();
         String click_value = format.getClickValue();
 
         if (hover == null && click_value == null) {
@@ -493,6 +494,11 @@ public class GChatPlayer {
      * @since    3.2.0
      */
     public TextComponent convertString(ServerInfo server_info, String source, @Nullable Map<String, String> parameters) {
+        SplittedStringList splitted = StringSplitter.parse(source);
+        return this.convertString(server_info, splitted, parameters);
+    }
+
+    public TextComponent convertString(ServerInfo server_info, SplittedStringList source, @Nullable Map<String, String> parameters) {
 
         // Create the empty result. We'll append to this.
         TextComponent result = GChatPlugin.convertString(source, placeholder_entry -> {

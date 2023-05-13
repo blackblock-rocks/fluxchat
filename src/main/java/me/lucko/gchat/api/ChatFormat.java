@@ -26,8 +26,11 @@
 package me.lucko.gchat.api;
 
 import com.velocitypowered.api.proxy.Player;
+import me.lucko.gchat.placeholder.SplittedStringList;
+import me.lucko.gchat.placeholder.StringSplitter;
 import net.kyori.adventure.text.event.ClickEvent;
 import ninja.leaping.configurate.ConfigurationNode;
+import org.jetbrains.annotations.Nullable;
 
 import static me.lucko.gchat.config.GChatConfig.getStringNonNull;
 
@@ -45,6 +48,9 @@ public class ChatFormat {
     private final String clickValue;
     private final String type;
     private final String permission;
+
+    private SplittedStringList splitted_format_text = null;
+    private SplittedStringList splitted_hover_text = null;
 
     public ChatFormat(String id, ConfigurationNode c) {
         this.id = id;
@@ -141,6 +147,32 @@ public class ChatFormat {
 
     public String getHoverText() {
         return this.hoverText;
+    }
+
+    /**
+     * Return the splitted format text
+     *
+     * @since    3.2.0
+     */
+    public SplittedStringList getSplittedFormatText() {
+        if (this.splitted_format_text == null) {
+            this.splitted_format_text = StringSplitter.parse(this.formatText);
+        }
+
+        return this.splitted_format_text;
+    }
+
+    /**
+     * Return the splitted hover text
+     *
+     * @since    3.2.0
+     */
+    public SplittedStringList getSplittedHoverText() {
+        if (this.splitted_hover_text == null) {
+            this.splitted_hover_text = StringSplitter.parse(this.hoverText);
+        }
+
+        return this.splitted_hover_text;
     }
 
     public ClickEvent.Action getClickType() {

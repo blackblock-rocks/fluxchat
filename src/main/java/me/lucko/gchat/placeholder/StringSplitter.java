@@ -24,9 +24,20 @@ public class StringSplitter {
         PLACEHOLDER
     }
 
+    /**
+     * Convert a string into a splitted string list
+     *
+     * @author   Jelle De Loecker
+     * @since    3.2.0
+     */
     public static SplittedStringList parse(String input) {
 
         SplittedStringList result = new SplittedStringList();
+
+        if (input == null || input.isEmpty()) {
+            return result;
+        }
+
         State current_state = State.PLAIN_TEXT;
 
         int length = input.length();

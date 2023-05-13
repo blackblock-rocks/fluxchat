@@ -517,10 +517,18 @@ public class GChatPlugin implements GChatApi {
      * @since    3.2.0
      */
     public static TextComponent convertString(String string, GChatPlayer.PlaceholderResolver resolver) {
-
         SplittedStringList entries = StringSplitter.parse(string);
-        SplittedStringConverter converter = new SplittedStringConverter(entries, resolver);
+        return convertString(entries, resolver);
+    }
 
+    /**
+     * Convert a string into a TextComponent with help from the given resolver.
+     *
+     * @author   Jelle De Loecker
+     * @since    3.2.0
+     */
+    public static TextComponent convertString(SplittedStringList entries, GChatPlayer.PlaceholderResolver resolver) {
+        SplittedStringConverter converter = new SplittedStringConverter(entries, resolver);
         return converter.toTextComponent();
     }
 
