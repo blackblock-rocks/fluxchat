@@ -6,6 +6,11 @@ import com.velocitypowered.api.event.connection.PluginMessageEvent;
 import com.velocitypowered.api.proxy.ServerConnection;
 import com.velocitypowered.api.proxy.messages.ChannelIdentifier;
 import com.velocitypowered.api.proxy.server.ServerInfo;
+import dev.dewy.nbt.Nbt;
+import dev.dewy.nbt.io.NbtReader;
+import dev.dewy.nbt.tags.collection.CompoundTag;
+import dev.dewy.nbt.tags.collection.ListTag;
+import dev.dewy.nbt.tags.primitive.ByteTag;
 import me.lucko.gchat.GChatPlayer;
 import me.lucko.gchat.GChatPlugin;
 
@@ -13,6 +18,7 @@ import java.util.UUID;
 
 public class PluginMessageHook {
 
+    public static final Nbt NBT = new Nbt();
     public final GChatPlugin plugin;
 
     public PluginMessageHook(GChatPlugin plugin) {
@@ -47,23 +53,27 @@ public class PluginMessageHook {
             return;
         }
 
-        byte[] data = e.getData();
-        ByteArrayDataInput packet = e.dataAsDataStream();
+        CompoundTag packet;
 
-        int version = packet.readInt();
-        float mspt = packet.readFloat();
-        float tps = packet.readFloat();
-        int load;
-
-        if (version > 0) {
-            load = packet.readInt();
-        } else {
-            load = (int) ((mspt / 50) * 100);
+        try {
+            packet = NBT.fromByteArray(e.getData());
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            return;
         }
+
+        int version = packet.getInt("version").getValue();
+        float mspt = packet.getFloat("mspt").getValue();
+        float tps = packet.getFloat("tps").getValue();
+        int load = packet.getInt("load").getValue();
 
         GChatPlugin.instance.registerTicks(server, mspt, tps, load);
 
         this.parseGchatPlayerUpdate(server.getServerInfo(), packet);
+    }
+
+    public static UUID intArrayToUuid(int[] array) {
+        return new UUID((long)array[0] << 32 | (long)array[1] & 0xFFFFFFFFL, (long)array[2] << 32 | (long)array[3] & 0xFFFFFFFFL);
     }
 
     /**
@@ -72,29 +82,50 @@ public class PluginMessageHook {
      * @author   Jelle De Loecker
      * @since    3.2.0
      */
-    private void parseGchatPlayerUpdate(ServerInfo server_info, ByteArrayDataInput packet) {
+    private void parseGchatPlayerUpdate(ServerInfo server_info, CompoundTag packet) {
 
-        int player_amount = packet.readInt();
-
-        if (player_amount == 0) {
+        if (!packet.contains("players")) {
             return;
         }
 
-        for (int i = 0; i < player_amount; i++) {
+        ListTag<CompoundTag> players = packet.getList("players");
 
-            long uuid_most = packet.readLong();
-            long uuid_least = packet.readLong();
-            UUID uuid = new UUID(uuid_most, uuid_least);
+        for (CompoundTag player_nbt : players) {
 
+            int[] uuid_ints = player_nbt.getIntArray("uuid").getValue();
+
+            if (uuid_ints.length != 4) {
+                continue;
+            }
+
+            UUID uuid = intArrayToUuid(uuid_ints);
             GChatPlayer player = GChatPlayer.get(uuid);
 
-            int placeholder_count = packet.readInt();
+            if (player == null) {
+                continue;
+            }
 
-            for (int j = 0; j < placeholder_count; j++) {
-                String key = packet.readUTF();
-                String value = packet.readUTF();
+            if (player_nbt.containsInt("ticks_since_movement")) {
+                int ticks_since_movement = player_nbt.getInt("ticks_since_movement").getValue();
+                player.setTicksSinceMovement(ticks_since_movement);
+            }
 
-                if (player != null) {
+            if (player_nbt.containsByte("stationary")) {
+                ByteTag stationary_tag = player_nbt.getByte("stationary");
+
+                if (stationary_tag.getValue() == 1) {
+                    player.setIsStationary(true);
+                } else {
+                    player.setIsStationary(false);
+                }
+            }
+
+            if (player_nbt.containsCompound("placeholders")) {
+
+                CompoundTag placeholders = player_nbt.getCompound("placeholders");
+
+                for (String key : placeholders.keySet()) {
+                    String value = placeholders.getString(key).getValue();
                     player.setServerPlaceholder(server_info, key, value);
                 }
             }

@@ -43,6 +43,8 @@ public class GChatPlayer {
     protected DateFormat date_format = null;
     protected boolean is_afk = false;
     protected Long afk_since = null;
+    protected boolean is_stationary = false;
+    protected int ticks_since_movement = 0;
     public static final Map<String, String> COLOR_MAP = new HashMap<>();
 
     public static final HashMap<UUID, GChatPlayer> CACHE = new HashMap<>();
@@ -602,6 +604,51 @@ public class GChatPlayer {
         }
 
         return null;
+    }
+
+    /**
+     * Set the amount of ticks that have passed since the last movement
+     *
+     * @since    3.2.0
+     */
+    public void setTicksSinceMovement(int ticks_since_movement) {
+
+        // Disable AFK once someone moves again
+        if (ticks_since_movement < this.ticks_since_movement) {
+            this.setAfk(false);
+        }
+
+        this.ticks_since_movement = ticks_since_movement;
+    }
+
+    /**
+     * Is this player stationary?
+     *
+     * @since    3.2.0
+     */
+    public void setIsStationary(boolean is_stationary) {
+
+        // Ignore this is nothing changes
+        if (this.is_stationary == is_stationary) {
+            return;
+        }
+
+        this.is_stationary = is_stationary;
+
+        if (is_stationary) {
+            this.setAfk(true);
+        } else {
+            this.setAfk(false);
+        }
+    }
+
+    /**
+     * Is this player stationary?
+     *
+     * @since    3.2.0
+     */
+    public boolean getIsStationary() {
+        return this.is_stationary;
     }
 
     /**
