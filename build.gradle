@@ -1,8 +1,6 @@
 plugins {
     id 'java-library'
     id 'maven-publish'
-    id 'net.kyori.indra' version '2.0.6'
-    id 'net.kyori.indra.publishing' version '2.0.6'
     id 'net.kyori.blossom' version '1.3.0'
     id 'com.github.johnrengelman.shadow' version '7.0.0'
 }
@@ -105,39 +103,6 @@ dependencies {
     implementation "me.xdrop:fuzzywuzzy:${fuzzywuzzyVersion}"
 }
 
-indra {
-    github('N3FS', 'Neutron') {
-        ci(true)
-    }
-    mitLicense()
-
-    publishReleasesTo('n3fs', 'https://repo.essentialsx.net/n3fs/')
-    publishSnapshotsTo('n3fs', 'https://repo.essentialsx.net/n3fs/')
-
-    configurePublications {
-        pom {
-            description.set('A simple global chat plugin for Velocity.')
-            url.set('https://n3fs.co.uk')
-            developers {
-                developer {
-                    id.set('mdcfe')
-                    name.set('MD')
-                    email.set('md@n3fs.co.uk')
-                }
-                developer {
-                    id.set('lucko')
-                    name.set('Luck')
-                }
-            }
-        }
-    }
-
-    javaVersions {
-        target(21)
-        minimumToolchain(16)
-    }
-}
-
 blossom {
     replaceToken '@ID@', name.toLowerCase()
     replaceToken '@NAME@', name
@@ -161,3 +126,46 @@ build.dependsOn shadowJar
 
 sourceCompatibility = JavaVersion.VERSION_21
 targetCompatibility = JavaVersion.VERSION_21
+
+// configure the maven publication
+publishing {
+    publications {
+        create("mavenJava", MavenPublication) {
+            artifactId = archives_base_name
+            from components.java
+        }
+    }
+
+    // See https://docs.gradle.org/current/userguide/publishing_maven.html for information on how to set up publishing.
+    repositories {
+        // Add repositories to publish to here.
+        // Notice: This block does NOT have the same function as the block in the top level.
+        // The repositories here will be used for publishing your artifact, not for
+        // retrieving dependencies.
+        repositories {
+            if (envVars.MAVEN_URL) {
+                maven {
+                    credentials {
+                        username envVars.MAVEN_USERNAME
+                        password envVars.MAVEN_PASSWORD
+                    }
+                    url envVars.MAVEN_URL
+                }
+            } else {
+                mavenLocal()
+            }
+
+            if (isDevelopment) {
+
+                if (localRepoDir) {
+                    maven {
+                        name = 'local'
+                        url = uri(localRepoDir)
+                    }
+                } else {
+                    mavenLocal()
+                }
+            }
+        }
+    }
+}
