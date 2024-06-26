@@ -60,15 +60,14 @@ import me.lucko.gchat.placeholder.StandardPlaceholders;
 import me.lucko.gchat.placeholder.StringSplitter;
 import me.lucko.gchat.tab.GChatTabList;
 import net.kyori.adventure.serializer.configurate3.ConfigurateComponentSerializer;
-import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
-import ninja.leaping.configurate.ConfigurationNode;
-import ninja.leaping.configurate.ConfigurationOptions;
-import ninja.leaping.configurate.objectmapping.serialize.TypeSerializerCollection;
-import ninja.leaping.configurate.yaml.YAMLConfigurationLoader;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
+import org.spongepowered.configurate.ConfigurationNode;
+import org.spongepowered.configurate.ConfigurationOptions;
+import org.spongepowered.configurate.serialize.TypeSerializerCollection;
+import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
 
 import java.io.File;
 import java.io.IOException;
@@ -149,6 +148,7 @@ public class GChatPlugin implements GChatApi {
         try {
             this.config = loadConfig();
         } catch (Exception e) {
+            e.printStackTrace();
             throw new RuntimeException("Failed to load config", e);
         }
 
@@ -345,15 +345,15 @@ public class GChatPlugin implements GChatApi {
     }
 
     private GChatConfig loadConfig() throws Exception {
-        TypeSerializerCollection serializerCollection = TypeSerializerCollection.create();
-        ConfigurateComponentSerializer.configurate().addSerializersTo(serializerCollection);
+        TypeSerializerCollection serializerCollection = TypeSerializerCollection.builder().build();
+        //ConfigurateComponentSerializer.configurate().addSerializersTo(serializerCollection);
 
         ConfigurationOptions options = ConfigurationOptions.defaults()
-                .withSerializers(serializerCollection);
+                .serializers(serializerCollection);
 
-        ConfigurationNode configNode = YAMLConfigurationLoader.builder()
-                .setDefaultOptions(options)
-                .setFile(getBundledFile("config.yml"))
+        ConfigurationNode configNode = YamlConfigurationLoader.builder()
+                .defaultOptions(options)
+                .file(getBundledFile("config.yml"))
                 .build()
                 .load();
         return new GChatConfig(configNode);

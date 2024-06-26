@@ -29,8 +29,7 @@ import com.velocitypowered.api.proxy.Player;
 import me.lucko.gchat.placeholder.SplittedStringList;
 import me.lucko.gchat.placeholder.StringSplitter;
 import net.kyori.adventure.text.event.ClickEvent;
-import ninja.leaping.configurate.ConfigurationNode;
-import org.jetbrains.annotations.Nullable;
+import org.spongepowered.configurate.ConfigurationNode;
 
 import static me.lucko.gchat.config.GChatConfig.getStringNonNull;
 
@@ -54,27 +53,27 @@ public class ChatFormat {
 
     public ChatFormat(String id, ConfigurationNode c) {
         this.id = id;
-        this.priority = c.getNode("priority").getInt(0);
-        this.checkPermission = c.getNode("check-permission").getBoolean(true);
+        this.priority = c.node("priority").getInt(0);
+        this.checkPermission = c.node("check-permission").getBoolean(true);
         this.formatText = getStringNonNull(c, "format");
-        this.type = c.getNode("type").getString("chat");
-        this.permission = c.getNode("permission").getString(null);
+        this.type = c.node("type").getString("chat");
+        this.permission = c.node("permission").getString("");
 
         String currentHoverText = null;
         ClickEvent.Action currentClickType = null;
         String currentClickValue = null;
 
-        ConfigurationNode extra = c.getNode("format-extra");
-        if (!extra.isVirtual()) {
-            String hover = extra.getNode("hover").getString();
+        ConfigurationNode extra = c.node("format-extra");
+        if (!extra.virtual()) {
+            String hover = extra.node("hover").getString();
             if (hover != null && !hover.isEmpty()) {
                 currentHoverText = hover;
             }
 
-            ConfigurationNode click = extra.getNode("click");
-            if (!click.isVirtual()) {
-                String type = click.getNode("type").getString("none").toLowerCase();
-                String value = click.getNode("value").getString();
+            ConfigurationNode click = extra.node("click");
+            if (!click.virtual()) {
+                String type = click.node("type").getString("none").toLowerCase();
+                String value = click.node("value").getString();
 
                 if (!type.equals("none") && value != null) {
                     if (!type.equals("suggest_command") && !type.equals("run_command") && !type.equals("open_url")) {
@@ -110,7 +109,7 @@ public class ChatFormat {
             return true;
         }
 
-        if (this.permission != null) {
+        if (!this.permission.isEmpty()) {
             if (player.hasPermission(this.permission)) {
                 return true;
             } else {

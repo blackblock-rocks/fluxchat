@@ -54,10 +54,20 @@ public class PluginMessageHook {
         }
 
         CompoundTag packet;
+        byte[] byte_data = e.getData();
+
+        StringBuilder builder = new StringBuilder(byte_data.length);
+
+        for (byte byteValue : byte_data) {
+            builder.append(String.format("%02x", byteValue));
+        }
+
+        System.out.println("Parsing byte data: " + builder.toString());
 
         try {
-            packet = NBT.fromByteArray(e.getData());
+            packet = NBT.fromByteArray(byte_data);
         } catch (Exception ex) {
+            System.out.println(e.getIdentifier() + " »» (DATA) '" + byte_data + "'");
             ex.printStackTrace();
             return;
         }

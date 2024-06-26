@@ -26,17 +26,15 @@
 package me.lucko.gchat.config;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.reflect.TypeToken;
 import me.lucko.gchat.GChatPlugin;
 import me.lucko.gchat.api.ChatFormat;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.Style;
 import net.kyori.adventure.text.format.TextDecoration;
-import ninja.leaping.configurate.ConfigurationNode;
-import ninja.leaping.configurate.objectmapping.ObjectMappingException;
+import org.spongepowered.configurate.ConfigurationNode;
+import io.leangen.geantyref.TypeToken;
 
-import java.lang.reflect.Type;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -61,17 +59,17 @@ public class GChatConfig {
     private final URI push_event_endpoint;
 
     public GChatConfig(ConfigurationNode c) {
-        this.passthrough = c.getNode("passthrough").getBoolean(true);
+        this.passthrough = c.node("passthrough").getBoolean(true);
 
-        this.logChatGlobal = c.getNode("log-chat-global").getBoolean(true);
+        this.logChatGlobal = c.node("log-chat-global").getBoolean(true);
 
-        ConfigurationNode push_events = c.getNode("push-events");
+        ConfigurationNode push_events = c.node("push-events");
 
-        if (!push_events.isVirtual()) {
-            Boolean enabled = push_events.getNode("enabled").getBoolean(false);
+        if (!push_events.virtual()) {
+            Boolean enabled = push_events.node("enabled").getBoolean(false);
 
             if (enabled) {
-                String endpoint = push_events.getNode("endpoint").getString();
+                String endpoint = push_events.node("endpoint").getString();
 
                 if (endpoint == null || endpoint.isBlank()) {
                     enabled = false;
@@ -89,17 +87,17 @@ public class GChatConfig {
             this.push_event_endpoint = null;
         }
 
-        ConfigurationNode requirePermission = c.getNode("require-permission");
-        if (requirePermission.isVirtual()) {
+        ConfigurationNode requirePermission = c.node("require-permission");
+        if (requirePermission.virtual()) {
             throw new IllegalArgumentException("Missing section: require-permission");
         }
 
-        ConfigurationNode tablist = c.getNode("tablist");
+        ConfigurationNode tablist = c.node("tablist");
 
-        if (!tablist.isEmpty()) {
+        if (!tablist.empty()) {
 
-            this.tablist_header = this.getLinesAsString(tablist.getNode("header"));
-            this.tablist_footer = this.getLinesAsString(tablist.getNode("footer"));
+            this.tablist_header = this.getLinesAsString(tablist.node("header"));
+            this.tablist_footer = this.getLinesAsString(tablist.node("footer"));
 
             if (this.tablist_header != null || this.tablist_footer != null) {
                 this.has_tablist_config = true;
@@ -112,7 +110,7 @@ public class GChatConfig {
             this.has_tablist_config = false;
         }
 
-        this.requireSendPermission = requirePermission.getNode("send").getBoolean(false);
+        this.requireSendPermission = requirePermission.node("send").getBoolean(false);
 
         String failMsg = getStringNonNull(requirePermission, "send-fail");
         if (failMsg.isEmpty()) {
@@ -121,18 +119,18 @@ public class GChatConfig {
             requireSendPermissionFailMessage = GChatPlugin.LEGACY_LINKING_SERIALIZER.deserialize(failMsg);
         }
 
-        this.requireReceivePermission = requirePermission.getNode("receive").getBoolean(false);
-        this.requirePermissionPassthrough = requirePermission.getNode("passthrough").getBoolean(true);
+        this.requireReceivePermission = requirePermission.node("receive").getBoolean(false);
+        this.requirePermissionPassthrough = requirePermission.node("passthrough").getBoolean(true);
 
-        ConfigurationNode formatsSection = c.getNode("formats");
-        if (formatsSection.isVirtual()) {
+        ConfigurationNode formatsSection = c.node("formats");
+        if (formatsSection.virtual()) {
             throw new IllegalArgumentException("Missing section: formats");
         }
 
         Map<String, ChatFormat> currentFormats = new HashMap<>();
-        for (Object id : formatsSection.getChildrenMap().keySet()) {
-            ConfigurationNode formatSection = formatsSection.getNode(id);
-            if (formatSection.isVirtual() || !(id instanceof String)) {
+        for (Object id : formatsSection.childrenMap().keySet()) {
+            ConfigurationNode formatSection = formatsSection.node(id);
+            if (formatSection.virtual() || !(id instanceof String)) {
                 continue;
             }
 
@@ -149,8 +147,8 @@ public class GChatConfig {
         Style currentLinkStyle;
         try {
             //noinspection UnstableApiUsage
-            currentLinkStyle = c.getNode("link-style").getValue(TypeTokens.STYLE, DEFAULT_LINK_STYLE);
-        } catch (ObjectMappingException e) {
+            currentLinkStyle = c.node("link-style").get(TypeTokens.STYLE, DEFAULT_LINK_STYLE);
+        } catch (Exception e) {
             currentLinkStyle = DEFAULT_LINK_STYLE;
         }
 
@@ -158,7 +156,7 @@ public class GChatConfig {
     }
 
     public static String getStringNonNull(ConfigurationNode configuration, String path) throws IllegalArgumentException {
-        String ret = configuration.getNode(path).getString();
+        String ret = configuration.node(path).getString();
         if (ret == null) {
             throw new IllegalArgumentException("Missing string value at '" + path + "'");
         }
@@ -181,7 +179,7 @@ public class GChatConfig {
 
     private String getLinesAsString(ConfigurationNode node) {
 
-        if (node.isEmpty()) {
+        if (node.empty()) {
             return null;
         }
 

@@ -7,13 +7,56 @@ plugins {
     id 'com.github.johnrengelman.shadow' version '7.0.0'
 }
 
-group = 'uk.co.n3fs.mc'
-version = '3.0.1-SNAPSHOT'
-description = 'A simple global chat plugin for Velocity.'
+/**
+ * Version setup
+ */
+def baseVersion = project.project_version
+def baseGroup = project.maven_group
+def localPropertiesFile = file('local.properties')
+def localProperties = new Properties()
+
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withInputStream { stream ->
+        localProperties.load(stream)
+    }
+}
+
+def envVars = System.getenv()
+def currentEnvironment = envVars.getOrDefault("ENV", localProperties.getProperty("environment", "dev"))
+def isDevelopment = currentEnvironment == "dev"
+def localRepoDir = null
+ext.versionModifier = null
+
+if (localProperties.hasProperty("localRepoDir")) {
+    localRepoDir = localProperties.getProperty("localRepoDir")
+} else if (project.hasProperty("localRepoDir")) {
+    localRepoDir = project.findProperty("localRepoDir")
+}
+
+if (isDevelopment) {
+    versionModifier = "-SNAPSHOT"
+}
+
+def constructVersion(baseVersion) {
+    def result = baseVersion + versionModifier
+    return result
+}
+
+version = constructVersion(baseVersion)
+group = baseGroup
+
+println("Info: currentEnvironment = $currentEnvironment")
+println("Info: isDevelopment = $isDevelopment")
+println("Info: localRepoDir = $localRepoDir")
+println("Info: versionModifier = $versionModifier")
+println("Info: version = " + version)
+
+base {
+    archivesName = project.archives_base_name
+}
 
 repositories {
     mavenCentral()
-    jcenter()
 
     maven {
         url 'https://ci.lucko.me/plugin/repository/everything/'
@@ -35,22 +78,31 @@ repositories {
     maven {
         url 'https://repo.essentialsx.net/n3fs/'
     }
+
+    if (isDevelopment && localRepoDir) {
+        maven {
+            url localRepoDir
+        }
+    }
 }
 
+def dewyNbtVersion = project.dewy_nbt_version
+def fuzzywuzzyVersion = project.fuzzywuzzy_version
+
 dependencies {
-    compileOnly 'com.velocitypowered:velocity-api:3.1.1'
-    annotationProcessor 'com.velocitypowered:velocity-api:3.1.1'
+    compileOnly "com.velocitypowered:velocity-api:${project.velocity_api_version}"
+    annotationProcessor "com.velocitypowered:velocity-api:${project.velocity_api_version}"
 
-    compileOnly 'net.luckperms:api:5.2'
-    compileOnly 'uk.co.n3fs.mc:Neutron-N3FS:5.0.0-SNAPSHOT'
+    compileOnly "net.luckperms:api:${project.luckperms_api_version}"
+    compileOnly "uk.co.n3fs.mc:Neutron-N3FS:${project.neutron_n3fs_version}"
 
-    implementation 'me.lucko.luckperms:placeholders-common:5.1-SNAPSHOT'
-    implementation 'net.kyori:adventure-serializer-configurate3:4.3.0'
-    implementation "net.kyori:adventure-text-minimessage:4.11.0"
+    implementation "me.lucko.luckperms:placeholders-common:${project.placeholders_common_version}"
+    implementation "net.kyori:adventure-serializer-configurate3:${project.adventure_configurate3_version}"
+    implementation "net.kyori:adventure-text-minimessage:${project.adventure_text_minimessage_version}"
 
-    implementation "dev.dewy:nbt:1.5.1"
+    implementation "dev.dewy:nbt:${dewyNbtVersion}"
 
-    implementation 'me.xdrop:fuzzywuzzy:1.3.1'
+    implementation "me.xdrop:fuzzywuzzy:${fuzzywuzzyVersion}"
 }
 
 indra {
@@ -81,7 +133,7 @@ indra {
     }
 
     javaVersions {
-        target(16)
+        target(21)
         minimumToolchain(16)
     }
 }
@@ -97,15 +149,15 @@ shadowJar {
     dependencies {
         include(dependency('me.lucko.luckperms:placeholders-common'))
         include(dependency('net.kyori:adventure-serializer-configurate3'))
-        include(dependency('me.xdrop:fuzzywuzzy:1.3.1'))
-        include(dependency('dev.dewy:nbt:1.5.1'))
+        include(dependency("me.xdrop:fuzzywuzzy:${fuzzywuzzyVersion}"))
+        include(dependency("dev.dewy:nbt:${dewyNbtVersion}"))
     }
 
-    relocate 'me.lucko.luckperms.placeholders', 'uk.co.n3fs.gchat.libs.luckperms.placeholders'
-    relocate 'net.kyori.adventure.serializer.configurate3', 'uk.co.n3fs.gchat.libs.adventure.configurate3'
+    //relocate 'me.lucko.luckperms.placeholders', 'uk.co.n3fs.gchat.libs.luckperms.placeholders'
+    //relocate 'net.kyori.adventure.serializer.configurate3', 'uk.co.n3fs.gchat.libs.adventure.configurate3'
 }
 
 build.dependsOn shadowJar
 
-sourceCompatibility = JavaVersion.VERSION_16
-targetCompatibility = JavaVersion.VERSION_16
+sourceCompatibility = JavaVersion.VERSION_21
+targetCompatibility = JavaVersion.VERSION_21
