@@ -6,13 +6,14 @@ import com.velocitypowered.api.event.connection.PluginMessageEvent;
 import com.velocitypowered.api.proxy.ServerConnection;
 import com.velocitypowered.api.proxy.messages.ChannelIdentifier;
 import com.velocitypowered.api.proxy.server.ServerInfo;
-import dev.dewy.nbt.Nbt;
-import dev.dewy.nbt.io.NbtReader;
-import dev.dewy.nbt.tags.collection.CompoundTag;
-import dev.dewy.nbt.tags.collection.ListTag;
-import dev.dewy.nbt.tags.primitive.ByteTag;
 import me.lucko.gchat.GChatPlayer;
 import me.lucko.gchat.GChatPlugin;
+import rocks.blackblock.nbt.Nbt;
+import rocks.blackblock.nbt.api.NbtElement;
+import rocks.blackblock.nbt.elements.collection.NbtCompound;
+import rocks.blackblock.nbt.elements.collection.NbtList;
+import rocks.blackblock.nbt.elements.primitive.NbtByte;
+
 
 import java.util.UUID;
 
@@ -53,33 +54,28 @@ public class PluginMessageHook {
             return;
         }
 
-        CompoundTag packet;
+        NbtElement packet;
         byte[] byte_data = e.getData();
-
-        StringBuilder builder = new StringBuilder(byte_data.length);
-
-        for (byte byteValue : byte_data) {
-            builder.append(String.format("%02x", byteValue));
-        }
-
-        System.out.println("Parsing byte data: " + builder.toString());
 
         try {
             packet = NBT.fromByteArray(byte_data);
         } catch (Exception ex) {
-            System.out.println(e.getIdentifier() + " »» (DATA) '" + byte_data + "'");
             ex.printStackTrace();
             return;
         }
 
-        int version = packet.getInt("version").getValue();
-        float mspt = packet.getFloat("mspt").getValue();
-        float tps = packet.getFloat("tps").getValue();
-        int load = packet.getInt("load").getValue();
+        if (!(packet instanceof NbtCompound nbtCompound)) {
+            return;
+        }
+
+        int version = nbtCompound.getInt("version").getValue();
+        float mspt = nbtCompound.getFloat("mspt").getValue();
+        float tps = nbtCompound.getFloat("tps").getValue();
+        int load = nbtCompound.getInt("load").getValue();
 
         GChatPlugin.instance.registerTicks(server, mspt, tps, load);
 
-        this.parseGchatPlayerUpdate(server.getServerInfo(), packet);
+        this.parseGchatPlayerUpdate(server.getServerInfo(), nbtCompound);
     }
 
     public static UUID intArrayToUuid(int[] array) {
@@ -92,15 +88,15 @@ public class PluginMessageHook {
      * @author   Jelle De Loecker
      * @since    3.2.0
      */
-    private void parseGchatPlayerUpdate(ServerInfo server_info, CompoundTag packet) {
+    private void parseGchatPlayerUpdate(ServerInfo server_info, NbtCompound packet) {
 
         if (!packet.contains("players")) {
             return;
         }
 
-        ListTag<CompoundTag> players = packet.getList("players");
+        NbtList<NbtCompound> players = packet.getList("players");
 
-        for (CompoundTag player_nbt : players) {
+        for (NbtCompound player_nbt : players) {
 
             int[] uuid_ints = player_nbt.getIntArray("uuid").getValue();
 
@@ -121,7 +117,7 @@ public class PluginMessageHook {
             }
 
             if (player_nbt.containsByte("stationary")) {
-                ByteTag stationary_tag = player_nbt.getByte("stationary");
+                NbtByte stationary_tag = player_nbt.getByte("stationary");
 
                 if (stationary_tag.getValue() == 1) {
                     player.setIsStationary(true);
@@ -132,7 +128,7 @@ public class PluginMessageHook {
 
             if (player_nbt.containsCompound("placeholders")) {
 
-                CompoundTag placeholders = player_nbt.getCompound("placeholders");
+                NbtCompound placeholders = player_nbt.getCompound("placeholders");
 
                 for (String key : placeholders.keySet()) {
                     String value = placeholders.getString(key).getValue();

@@ -86,7 +86,7 @@ repositories {
     }
 }
 
-def dewyNbtVersion = project.dewy_nbt_version
+def blackblockNbtVersion = constructVersion(project.blackblock_nbt_version)
 def fuzzywuzzyVersion = project.fuzzywuzzy_version
 
 dependencies {
@@ -100,7 +100,7 @@ dependencies {
     implementation "net.kyori:adventure-serializer-configurate3:${project.adventure_configurate3_version}"
     implementation "net.kyori:adventure-text-minimessage:${project.adventure_text_minimessage_version}"
 
-    implementation "dev.dewy:nbt:${dewyNbtVersion}"
+    implementation "rocks.blackblock:nbt:${blackblockNbtVersion}"
 
     implementation "me.xdrop:fuzzywuzzy:${fuzzywuzzyVersion}"
 }
@@ -150,7 +150,7 @@ shadowJar {
         include(dependency('me.lucko.luckperms:placeholders-common'))
         include(dependency('net.kyori:adventure-serializer-configurate3'))
         include(dependency("me.xdrop:fuzzywuzzy:${fuzzywuzzyVersion}"))
-        include(dependency("dev.dewy:nbt:${dewyNbtVersion}"))
+        include(dependency("rocks.blackblock:nbt:${blackblockNbtVersion}"))
     }
 
     //relocate 'me.lucko.luckperms.placeholders', 'uk.co.n3fs.gchat.libs.luckperms.placeholders'
