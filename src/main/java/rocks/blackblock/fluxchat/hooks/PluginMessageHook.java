@@ -116,6 +116,47 @@ public class PluginMessageHook {
                 player.setTicksSinceMovement(ticks_since_movement);
             }
 
+            if (player_nbt.containsString("dimension")) {
+                String dimension = player_nbt.getString("dimension").getValue();
+                player.setDimension(dimension);
+            }
+
+            if (player_nbt.containsByte("alive")) {
+                byte alive = player_nbt.getByte("alive").getValue();
+                if (alive == 0) {
+                    player.setIsAlive(false);
+                } else {
+                    player.setIsAlive(true);
+                }
+            }
+
+            if (player_nbt.containsByte("invisible")) {
+                byte value = player_nbt.getByte("invisible").getValue();
+                if (value == 0) {
+                    player.setIsInvisible(false);
+                } else {
+                    player.setIsInvisible(true);
+                }
+            }
+
+            if (player_nbt.containsByte("creative")) {
+                byte value = player_nbt.getByte("creative").getValue();
+                if (value == 0) {
+                    player.setIsCreative(false);
+                } else {
+                    player.setIsCreative(true);
+                }
+            }
+
+            if (player_nbt.containsByte("spectator")) {
+                byte value = player_nbt.getByte("spectator").getValue();
+                if (value == 0) {
+                    player.setIsSpectator(false);
+                } else {
+                    player.setIsSpectator(true);
+                }
+            }
+
             if (player_nbt.containsByte("stationary")) {
                 NbtByte stationary_tag = player_nbt.getByte("stationary");
 

@@ -572,6 +572,23 @@ public class FluxChatPlugin implements FluxChatApi {
      * Create an object with player data
      */
     public static JsonObject createObject(String type, Player player) {
+
+        var optional_server_connection = player.getCurrentServer();
+        ServerInfo server = null;
+
+        if (optional_server_connection.isPresent()) {
+            var connection = optional_server_connection.get();
+            server = connection.getServerInfo();
+        }
+
+        return createObject(type, player, server);
+    }
+
+    /**
+     * Create an object with player data
+     */
+    public static JsonObject createObject(String type, Player player, ServerInfo server) {
+
         JsonObject result = createObject(type);
 
         JsonObject player_obj = new JsonObject();
@@ -580,15 +597,18 @@ public class FluxChatPlugin implements FluxChatApi {
         player_obj.addProperty("username", player.getUsername());
         player_obj.addProperty("ping", player.getPing());
 
-        ServerConnection connection = player.getCurrentServer().orElse(null);
-
-        if (connection != null) {
-            player_obj.addProperty("server", connection.getServer().getServerInfo().getName());
+        if (server != null) {
+            player_obj.addProperty("server", server.getName());
         }
 
         FluxChatPlayer flux_player = FluxChatPlayer.get(player);
         player_obj.addProperty("is_afk", flux_player.getAfk());
         player_obj.addProperty("ticks_since_movement", flux_player.ticks_since_movement);
+        player_obj.addProperty("is_alive", flux_player.getIsAlive());
+        player_obj.addProperty("is_invisible", flux_player.getIsInvisible());
+        player_obj.addProperty("is_creative", flux_player.getIsCreative());
+        player_obj.addProperty("is_spectator", flux_player.getIsSpectator());
+        player_obj.addProperty("dimension", flux_player.getDimension());
 
         result.add("player", player_obj);
 

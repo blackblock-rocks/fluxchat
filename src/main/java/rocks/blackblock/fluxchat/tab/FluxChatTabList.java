@@ -32,6 +32,7 @@ public class FluxChatTabList {
     private String tablist_header = null;
     private String tablist_footer = null;
     private int update_counter = 0;
+    private long last_playerlist_push = System.currentTimeMillis();
 
     public FluxChatTabList(FluxChatPlugin plugin, ProxyServer proxy_server) {
         this.proxy_server = proxy_server;
@@ -91,10 +92,15 @@ public class FluxChatTabList {
      */
     public void sendPlayerList() {
 
+        long previous_playerlist_push = this.last_playerlist_push;
+        long current_time = System.currentTimeMillis();
+        this.last_playerlist_push = current_time;
+
         if (!FluxChatPlugin.shouldPushEvents()) {
             return;
         }
 
+        long ms_since_last_push = current_time - previous_playerlist_push;
         JsonObject event_data = FluxChatPlugin.createObject("players");
         JsonArray event_list = new JsonArray();
 
@@ -106,6 +112,7 @@ public class FluxChatTabList {
             event_list.add(temp.getAsJsonObject("player"));
         }
 
+        event_data.addProperty("ms_since_last_push", ms_since_last_push);
         event_data.add("players", event_list);
         FluxChatPlugin.pushEvent(event_data);
     }

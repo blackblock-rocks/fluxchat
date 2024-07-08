@@ -108,7 +108,7 @@ public class FluxChatListener {
         ServerInfo info = server.getServerInfo();
 
         if (FluxChatPlugin.shouldPushEvents()) {
-            JsonObject object = FluxChatPlugin.createObject("join", player);
+            JsonObject object = FluxChatPlugin.createObject("join", player, e.getServer().getServerInfo());
             FluxChatPlugin.pushEvent(object);
         }
 

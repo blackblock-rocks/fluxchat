@@ -43,7 +43,12 @@ public class FluxChatPlayer {
     protected DateFormat date_format = null;
     protected boolean is_afk = false;
     protected Long afk_since = null;
+    protected boolean is_alive = true;
+    protected boolean is_invisible = false;
+    protected boolean is_creative = false;
+    protected boolean is_spectator = false;
     protected boolean is_stationary = false;
+    protected String dimension = null;
     protected int ticks_since_movement = 0;
     public static final Map<String, String> COLOR_MAP = new HashMap<>();
 
@@ -604,6 +609,46 @@ public class FluxChatPlayer {
         }
 
         return null;
+    }
+
+    public void setDimension(String dimension) {
+        this.dimension = dimension;
+    }
+
+    public String getDimension() {
+        return this.dimension;
+    }
+
+    public void setIsAlive(boolean is_alive) {
+        this.is_alive = is_alive;
+    }
+
+    public boolean getIsAlive() {
+        return this.is_alive;
+    }
+
+    public void setIsInvisible(boolean value) {
+        this.is_invisible = value;
+    }
+
+    public boolean getIsInvisible() {
+        return this.is_invisible;
+    }
+
+    public void setIsCreative(boolean value) {
+        this.is_creative = value;
+    }
+
+    public boolean getIsCreative() {
+        return this.is_creative;
+    }
+
+    public void setIsSpectator(boolean value) {
+        this.is_spectator = value;
+    }
+
+    public boolean getIsSpectator() {
+        return this.is_spectator;
     }
 
     /**
