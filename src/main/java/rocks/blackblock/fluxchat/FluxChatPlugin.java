@@ -586,6 +586,10 @@ public class FluxChatPlugin implements FluxChatApi {
             player_obj.addProperty("server", connection.getServer().getServerInfo().getName());
         }
 
+        FluxChatPlayer flux_player = FluxChatPlayer.get(player);
+        player_obj.addProperty("is_afk", flux_player.getAfk());
+        player_obj.addProperty("ticks_since_movement", flux_player.ticks_since_movement);
+
         result.add("player", player_obj);
 
         return result;
